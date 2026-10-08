@@ -19,7 +19,7 @@ import styles from './login.module.css';
 type UserType = 'root' | 'iam';
 
 function safeNext(next: string | null): string {
-  return next && next.startsWith('/route53') ? next : '/route53/v2/hostedzones';
+  return next && next.startsWith('/route53') ? next : '/route53/v2/home';
 }
 
 function SignInForm() {
@@ -173,7 +173,7 @@ function SignInForm() {
                   }
                 >
                   <SpaceBetween size="l">
-                    {error && (
+                    {!!error && (
                       <Alert type="error" header="Sign-in failed">
                         {error}
                       </Alert>
@@ -212,7 +212,7 @@ function SignInForm() {
             )}
             <Box padding={{ top: 'l' }} textAlign="center">
               <SpaceBetween size="s">
-                {info && (
+                {!!info && (
                   <Alert type="info" dismissible onDismiss={() => setInfo('')}>
                     {info}
                   </Alert>

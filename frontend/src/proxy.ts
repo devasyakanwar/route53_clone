@@ -8,7 +8,7 @@ export function proxy(request: NextRequest) {
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
   if (pathname === '/' || pathname === '/route53' || pathname === '/route53/v2') {
-    return NextResponse.redirect(new URL(hasSession ? '/route53/v2/hostedzones' : '/login', request.url));
+    return NextResponse.redirect(new URL(hasSession ? '/route53/v2/home' : '/login', request.url));
   }
   if (pathname.startsWith('/route53') && !hasSession) {
     const login = new URL('/login', request.url);

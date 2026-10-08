@@ -121,7 +121,7 @@ export function DeleteZoneModal({ zones, visible, onDismiss, onDeleted }: Props)
                 : `These hosted zones still have records: ${withRecords.map(z => displayName(z.name)).join(', ')}.`}
             </Alert>
           )}
-          {error && <Alert type="error">{error}</Alert>}
+          {!!error && <Alert type="error">{error}</Alert>}
           <FormField label='To confirm deletion, type "delete" in the field.'>
             <Input
               value={confirm}

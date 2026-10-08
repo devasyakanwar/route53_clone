@@ -14,10 +14,11 @@ for (const mode of ['light', 'dark']) {
   const page = await context.newPage();
   await page.goto(`${BASE}/login`);
   await page.getByPlaceholder('demo@example.com').fill('demo@example.com');
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await page.locator('input[type=password]').fill('demo');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('**/route53/v2/hostedzones');
+  await page.waitForURL('**/route53/v2/home');
+  await page.goto(`${BASE}/route53/v2/hostedzones`);
   await page.getByRole('link', { name: 'example.com', exact: true }).waitFor();
   await page.waitForTimeout(600);
   await page.screenshot({ path: OUT + `hosted-zones-${mode}.png` });

@@ -80,7 +80,7 @@ export function DeleteRecordsModal({ zoneId, zoneName, records, visible, onDismi
           Deleting {records.length === 1 ? 'this record' : `these ${records.length} records`} is permanent. Route 53
           will stop responding to DNS queries for {records.length === 1 ? 'it' : 'them'}.
         </Box>
-        {error && <Alert type="error">{error}</Alert>}
+        {!!error && <Alert type="error">{error}</Alert>}
         <Table
           variant="embedded"
           items={records}

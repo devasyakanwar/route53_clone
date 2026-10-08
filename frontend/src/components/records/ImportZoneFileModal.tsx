@@ -144,7 +144,7 @@ export function ImportZoneFileModal({ zoneId, zoneName, visible, onDismiss, onIm
             spellcheck={false}
           />
         </FormField>
-        {error && (
+        {!!error && (
           <Alert type="error" header="The zone file couldn't be imported">
             {error}
           </Alert>

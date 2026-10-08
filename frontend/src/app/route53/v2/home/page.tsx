@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { InfoLink } from '@/components/common/InfoLink';
 import { ConsolePage } from '@/components/shell/ConsolePage';
+import { useShortcuts } from '@/components/shell/ShortcutsProvider';
 import { useDashboard } from '@/hooks/useHealthChecks';
 import { useZones } from '@/hooks/useZones';
 import { displayName } from '@/lib/format';
@@ -115,7 +116,7 @@ function RegisterDomain() {
               <Button formAction="submit">Check</Button>
             </div>
           </FormField>
-          {result && (
+          {!!result && (
             <Alert type="info" header={`Domain registration isn't available in this clone`}>
               Route 53 would check whether <b>{result}</b> is available and show its price. To manage DNS for{' '}
               {result}, create a hosted zone for it.
@@ -132,8 +133,12 @@ function RegisterDomain() {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data, error } = useDashboard();
-  const { zones } = useZones();
+  const { data, error, mutate } = useDashboard();
+  const { zones, mutate: mutateZones } = useZones();
+  useShortcuts({
+    create: () => router.push('/route53/v2/hostedzones/create'),
+    refresh: () => void Promise.all([mutate(), mutateZones()]),
+  });
   const recent = [...(zones ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5);
 
   return (

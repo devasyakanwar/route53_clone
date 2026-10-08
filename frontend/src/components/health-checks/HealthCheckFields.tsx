@@ -154,9 +154,9 @@ export function ConfigureHealthCheckFields({ state: s, errors, onChange, isEdit,
               <Box variant="code">{urlPreview(s)}</Box>
             </FormField>
 
-            <ExpandableSection headerText="Advanced configuration" headerInfo={<InfoLink topic="healthCheckAdvanced" />} variant="footer">
+            <ExpandableSection headerText="Advanced configuration" variant="footer">
               <SpaceBetween size="l">
-                <FormField label="Request interval" description={isEdit ? "You can't change the request interval after you create a health check." : 'The number of seconds between the time that each health checker gets a response and sends the next request.'}>
+                <FormField label="Request interval" info={<InfoLink topic="healthCheckAdvanced" />} description={isEdit ? "You can't change the request interval after you create a health check." : 'The number of seconds between the time that each health checker gets a response and sends the next request.'}>
                   <RadioGroup
                     value={s.requestInterval}
                     onChange={e => onChange({ requestInterval: e.detail.value as '10' | '30' })}

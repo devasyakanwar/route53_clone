@@ -5,11 +5,8 @@ import type {
   ChangeInfo,
   HealthCheck,
   HealthCheckConfig,
-  HostedZone,
   HostedZoneDetail,
   ImportResponse,
-  Paged,
-  RecordSet,
   Tag,
   User,
   ZoneCreateInput,
@@ -89,10 +86,7 @@ export const api = {
   login: (body: { email?: string; account_id?: string; username?: string; password: string }) =>
     request<User>('POST', '/auth/login', body),
   logout: () => request<void>('POST', '/auth/logout'),
-  me: () => request<User>('GET', '/auth/me'),
 
-  listZones: () => request<Paged<HostedZone>>('GET', keys.zones),
-  getZone: (id: string) => request<HostedZoneDetail>('GET', keys.zone(id)),
   createZone: (body: ZoneCreateInput) => request<ZoneCreateResponse>('POST', '/hostedzones', body),
   updateZone: (id: string, comment: string | null) =>
     request<HostedZoneDetail>('PATCH', `/hostedzones/${id}`, { comment }),
@@ -106,16 +100,12 @@ export const api = {
       `/hostedzones/export?format=${format}${(ids ?? []).map(id => `&ids=${encodeURIComponent(id)}`).join('')}`,
     ),
 
-  listHealthChecks: () => request<{ items: HealthCheck[]; total: number }>('GET', keys.healthChecks),
   createHealthCheck: (body: HealthCheckConfig & { tags?: Tag[] }) => request<HealthCheck>('POST', '/healthchecks', body),
   updateHealthCheck: (id: string, body: HealthCheckConfig) => request<HealthCheck>('PUT', keys.healthCheck(id), body),
   replaceHealthCheckTags: (id: string, tags: Tag[]) =>
     request<HealthCheck>('PUT', `${keys.healthCheck(id)}/tags`, { tags }),
   deleteHealthChecks: (ids: string[]) => request<void>('POST', '/healthchecks/batch-delete', { ids }),
 
-  listRecords: (id: string) => request<Paged<RecordSet>>('GET', keys.records(id)),
-  getRecord: (zoneId: string, recordId: number | string) =>
-    request<RecordSet>('GET', `/hostedzones/${zoneId}/recordsets/${recordId}`),
   changeRecords: (zoneId: string, changes: Change[], comment?: string) =>
     request<{ change_info: ChangeInfo }>('POST', `/hostedzones/${zoneId}/rrset`, { comment, changes }),
   getChange: (changeId: string) => request<ChangeInfo>('GET', `/changes/${changeId}`),

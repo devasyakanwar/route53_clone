@@ -45,15 +45,14 @@ def test_create_endpoint_check_defaults(make_hc: Callable[..., dict[str, Any]]) 
 def test_simulated_status_rules(client: TestClient, make_hc: Callable[..., dict[str, Any]]) -> None:
     ok = make_hc(name="ok")
     bad = make_hc(name="bad", type="HTTP", fqdn=None, ip_address="203.0.113.9")
-    inverted = make_hc(name="inv", type="HTTP", fqdn=None, ip_address="203.0.113.9", inverted=True)
-    disabled = make_hc(name="off", fqdn="down.example.com", disabled=True)
-    calc = make_hc(name="calc", type="CALCULATED", fqdn=None, child_health_checks=[ok["id"], bad["id"]], health_threshold=2)
-    cw = make_hc(name="cw", type="CLOUDWATCH_METRIC", fqdn=None,
+    make_hc(name="inv", type="HTTP", fqdn=None, ip_address="203.0.113.9", inverted=True)
+    make_hc(name="off", fqdn="down.example.com", disabled=True)
+    make_hc(name="calc", type="CALCULATED", fqdn=None, child_health_checks=[ok["id"], bad["id"]], health_threshold=2)
+    make_hc(name="cw", type="CLOUDWATCH_METRIC", fqdn=None,
                  cloudwatch_alarm={"alarm_name": "cpu-high", "region": "us-east-1", "insufficient_data_status": "Unhealthy"})
     age_all()
     status = {h["name"]: h["status"] for h in client.get(URL).json()["items"]}
     assert status == {"ok": "Healthy", "bad": "Unhealthy", "inv": "Healthy", "off": "Healthy", "calc": "Unhealthy", "cw": "Unhealthy"}
-    del inverted, disabled, calc, cw
 
 
 @pytest.mark.parametrize(

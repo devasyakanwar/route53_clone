@@ -8,6 +8,25 @@ import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { focusFirstFilter, isTypingTarget, SHORTCUT_LIST, type ShortcutHandlers } from '@/lib/shortcuts';
 
+const isVisible = (el: Element) => el.getClientRects().length > 0 && !el.closest('[aria-hidden="true"]');
+
+/**
+ * Cloudscape's TopNavigation renders a hidden copy of the search slot to measure the layout, so focus the visible
+ * input. On narrow screens the search collapses into an icon button: open it first, then focus.
+ */
+function focusTopSearch(): void {
+  const visibleInput = () =>
+    [...document.querySelectorAll<HTMLInputElement>('#top-nav input[placeholder="Search"]')].find(isVisible);
+  const input = visibleInput();
+  if (input) {
+    input.focus();
+    return;
+  }
+  const trigger = [...document.querySelectorAll<HTMLButtonElement>('#top-nav button[aria-label="Search"]')].find(isVisible);
+  trigger?.click();
+  setTimeout(() => visibleInput()?.focus(), 50);
+}
+
 interface ShortcutsApi {
   register: (handlers: ShortcutHandlers) => () => void;
   showHelp: () => void;
@@ -25,7 +44,7 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
         e.preventDefault();
-        document.querySelector<HTMLInputElement>('#top-nav-search input')?.focus();
+        focusTopSearch();
         return;
       }
       if (e.key === 'Escape') {
@@ -74,6 +93,7 @@ export function ShortcutsProvider({ children }: { children: ReactNode }) {
           }
           break;
         case 'Delete':
+        case 'Backspace': // the "delete" key on Mac keyboards
           if (handlers.current.delete) {
             e.preventDefault();
             handlers.current.delete();

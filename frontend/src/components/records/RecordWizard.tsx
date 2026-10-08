@@ -137,7 +137,7 @@ export function RecordWizard({ zone }: { zone: HostedZoneDetail }) {
           title: 'Review and create',
           content: (
             <SpaceBetween size="l">
-              {formError && <Alert type="error">{formError}</Alert>}
+              {!!formError && <Alert type="error">{formError}</Alert>}
               {Object.keys(errors).length > 0 && (
                 <Alert type="error" header="Some records have errors">
                   Go back to Configure records to fix them.

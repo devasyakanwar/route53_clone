@@ -20,12 +20,18 @@ const RECORDS: { name: string; type: string; value: string }[] = [
 ];
 
 async function signIn(page: Page) {
-  await page.goto('/route53/v2/hostedzones');
+  await page.goto('/');
   await expect(page).toHaveURL(/\/login/);
   await page.getByPlaceholder('demo@example.com').fill('demo@example.com');
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await page.locator('input[type=password]').fill('demo');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/\/route53\/v2\/home$/);
+  await expect(page.getByRole('heading', { name: 'Route 53 Dashboard' })).toBeVisible();
+}
+
+async function openHostedZones(page: Page) {
+  await page.getByRole('navigation', { name: 'Side navigation' }).getByRole('link', { name: 'Hosted zones', exact: true }).click();
   await expect(page).toHaveURL(/\/route53\/v2\/hostedzones$/);
 }
 
@@ -46,6 +52,8 @@ test('hosted zone and record lifecycle', async ({ page }) => {
 
   // Session survives a reload.
   await page.reload();
+  await expect(page.getByRole('heading', { name: 'Route 53 Dashboard' })).toBeVisible();
+  await openHostedZones(page);
   await expect(page.getByRole('heading', { name: /Hosted zones/ })).toBeVisible();
 
   // Create a public hosted zone.
@@ -141,6 +149,7 @@ test('hosted zone and record lifecycle', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/login/);
   await signIn(page);
+  await openHostedZones(page);
   await expect(page.getByRole('link', { name: 'example.com', exact: true })).toBeVisible();
 });
 
@@ -165,6 +174,7 @@ test('every side navigation link routes somewhere', async ({ page }) => {
 
 test('filter, info panel and keyboard shortcuts', async ({ page }) => {
   await signIn(page);
+  await openHostedZones(page);
   await page.getByLabel('Information').first().click();
   await expect(page.getByRole('heading', { name: 'Hosted zones', level: 2 })).toBeVisible();
 
@@ -205,13 +215,13 @@ test('health check lifecycle', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Health checks/ }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Create health check' }).click();
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByText('Enter a name for the health check.')).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByRole('textbox', { name: 'IP address' }).fill('198.51.100.80');
   await page.getByRole('textbox', { name: 'Path' }).fill('health');
   await expect(page.getByText('http://198.51.100.80:80/health')).toBeVisible();
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Get notified when health check fails' }).first()).toBeVisible();
   await page.getByRole('radio', { name: 'Yes' }).check({ force: true });
   await page.getByRole('radio', { name: 'New SNS topic' }).check({ force: true });
@@ -258,6 +268,8 @@ test('bulk delete and export hosted zones', async ({ page }) => {
     const res = await page.request.post('/api/v1/hostedzones', { data: { name, private_zone: false } });
     expect(res.status()).toBe(201);
   }
+  // The zones were created behind the app's back, so load the list fresh.
+  await openHostedZones(page);
   await page.reload();
   for (const name of names) {
     await page.getByRole('checkbox', { name: `Select ${name}` }).check({ force: true });
@@ -277,4 +289,13 @@ test('bulk delete and export hosted zones', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('2 hosted zones were successfully deleted.')).toBeVisible();
   for (const name of names) await expect(page.getByRole('link', { name })).toHaveCount(0);
+});
+
+test('opens on the dashboard', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/route53\/v2\/home$/);
+  await openHostedZones(page);
+  await page.getByRole('link', { name: 'Amazon Web Services' }).click();
+  await expect(page).toHaveURL(/\/route53\/v2\/home$/);
 });

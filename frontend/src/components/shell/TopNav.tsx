@@ -10,7 +10,8 @@ import { useShortcutsApi } from '@/components/shell/ShortcutsProvider';
 import { AWS_REGIONS } from '@/components/records/recordTypes';
 import { useSession } from '@/hooks/useSession';
 import { useZones } from '@/hooks/useZones';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
+import { downloadText } from '@/lib/download';
 import { displayName, formatAccountId } from '@/lib/format';
 import { readVisualMode, saveVisualMode, type VisualMode } from '@/lib/theme';
 
@@ -37,7 +38,7 @@ function ServicesMenu() {
         },
       ]}
       onItemClick={e => {
-        if (e.detail.id === 'route53') router.push('/route53/v2/hostedzones');
+        if (e.detail.id === 'route53') router.push('/route53/v2/home');
       }}
     >
       Services
@@ -111,6 +112,20 @@ export function TopNav() {
     saveVisualMode(m);
   };
 
+  const exportAllZones = async (format: 'json' | 'bind') => {
+    try {
+      const data = await api.exportZones(format);
+      if (format === 'json') downloadText('hosted-zones.json', JSON.stringify(data, null, 2), 'application/json');
+      else downloadText('hosted-zones.zone', String(data), 'text/plain');
+      notify.success({
+        header: `Exported all hosted zones as ${format === 'json' ? 'JSON' : 'BIND zone files'}.`,
+        timeout: 5000,
+      });
+    } catch (e) {
+      notify.error({ header: 'Export failed.', content: errorMessage(e) });
+    }
+  };
+
   const account = user ? formatAccountId(user.account_id) : '';
   const soon = (what: string) => notify.info({ header: `${what} is coming soon.`, timeout: 4000 });
 
@@ -118,11 +133,11 @@ export function TopNav() {
     <div id="top-nav" style={{ position: 'sticky', top: 0, zIndex: 1002 }}>
       <TopNavigation
         identity={{
-          href: '/route53/v2/hostedzones',
+          href: '/route53/v2/home',
           logo: { src: '/aws-logo.svg', alt: 'Amazon Web Services' },
           onFollow: e => {
             e.preventDefault();
-            router.push('/route53/v2/hostedzones');
+            router.push('/route53/v2/home');
           },
         }}
         search={<ConsoleSearch />}
@@ -205,10 +220,46 @@ export function TopNav() {
               { id: 'organization', text: 'Organization' },
               { id: 'billing', text: 'Billing and Cost Management' },
               { id: 'security', text: 'Security credentials' },
+              {
+                id: 'account-export',
+                text: 'Export all hosted zones',
+                items: [
+                  { id: 'account-export-json', text: 'As JSON' },
+                  { id: 'account-export-bind', text: 'As BIND zone files' },
+                ],
+              },
+              { id: 'account-shortcuts', text: 'Keyboard shortcuts', secondaryText: 'Press ?' },
+              {
+                id: 'account-visual-mode',
+                text: 'Visual mode',
+                items: [
+                  { id: 'account-mode-light', text: 'Light', itemType: 'checkbox', checked: mode === 'light' },
+                  { id: 'account-mode-dark', text: 'Dark', itemType: 'checkbox', checked: mode === 'dark' },
+                  { id: 'account-mode-system', text: 'Browser default', itemType: 'checkbox', checked: mode === 'system' },
+                ],
+              },
               { id: 'signout', text: 'Sign out' },
             ],
             onItemClick: async e => {
               switch (e.detail.id) {
+                case 'account-mode-light':
+                  setVisualMode('light');
+                  break;
+                case 'account-mode-dark':
+                  setVisualMode('dark');
+                  break;
+                case 'account-mode-system':
+                  setVisualMode('system');
+                  break;
+                case 'account-export-json':
+                  await exportAllZones('json');
+                  break;
+                case 'account-export-bind':
+                  await exportAllZones('bind');
+                  break;
+                case 'account-shortcuts':
+                  showHelp();
+                  break;
                 case 'signout':
                   try {
                     await api.logout();

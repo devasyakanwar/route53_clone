@@ -61,7 +61,7 @@ cd backend && pytest --cov=app/services        # 103 tests, ~93% coverage of ser
 cd e2e && npm install && npx playwright install chromium && npx playwright test   # needs both servers running
 ```
 
-The Playwright suite (6 tests) runs the whole walkthrough: sign in → create a zone → create one record of each of
+The Playwright suite (7 tests) runs the whole walkthrough: sign in → create a zone → create one record of each of
 the 9 required types in one batch → edit one → bulk-delete them → delete the zone → sign out → sign in. It also covers
 the dashboard, the health check lifecycle (create → Unknown → Healthy → edit → delete), bulk zone delete and export,
 navigation, filters and keyboard shortcuts.
@@ -201,12 +201,12 @@ Full schema: <http://localhost:8000/docs>.
 - [x] BIND zone file import (paste or upload, preview, then import atomically)
 - [x] Export as JSON or BIND: one zone (Records tab), or all/selected hosted zones (Hosted zones page)
 - [x] Bulk operations: multi-select bulk delete for hosted zones, records and health checks (each one atomic), multi-row record creation
-- [x] Dark mode (Settings → Visual mode: Light / Dark / Browser default), applied before first paint
+- [x] Dark mode (account menu or gear icon → Visual mode: Light / Dark / Browser default), applied before first paint
 - [x] Keyboard shortcuts
 - [x] Record creation wizard (Choose routing policy → Configure records → Review and create)
 - [x] "Test record" modal that answers from the zone's records, wildcards included
 - [x] Mocked change propagation: a PENDING flash that turns into INSYNC
-- [x] pytest suite (103 tests) and a Playwright end-to-end suite (6 tests)
+- [x] pytest suite (103 tests) and a Playwright end-to-end suite (7 tests)
 
 ### Keyboard shortcuts
 

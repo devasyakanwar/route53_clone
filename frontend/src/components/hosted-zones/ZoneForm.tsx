@@ -201,7 +201,7 @@ export function ZoneForm({ mode, zone }: { mode: 'create' | 'edit'; zone?: Hoste
                   />
                 </FormField>
               </div>
-              {duplicate && (
+              {!!duplicate && (
                 <Alert type="info" header="A hosted zone with this name already exists">
                   Route 53 lets you create more than one hosted zone with the same name, but only one of them can be
                   authoritative for the domain. Use the description to tell them apart.
