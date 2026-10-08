@@ -1,0 +1,39 @@
+# Render Blueprint: deploys the API and the web app as two free web services.
+# Render dashboard → New → Blueprint → pick this repository. When prompted, set BACKEND_URL on the
+# frontend to the backend's URL (e.g. https://route53-clone-api.onrender.com).
+#
+# Free instances have an ephemeral disk: the SQLite database is recreated and re-seeded with the demo
+# data whenever the service restarts or redeploys. Data persists while the instance is running.
+services:
+  - type: web
+    name: route53-clone-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DATABASE_URL
+        value: sqlite:///./route53.db
+      # The browser only ever talks to the frontend over HTTPS; the cookie is relayed by the Next.js proxy.
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: AUTO_SEED
+        value: "true"
+
+  - type: web
+    name: route53-clone-web
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      # Public URL of route53-clone-api, used by the /api rewrite at build and run time.
+      - key: BACKEND_URL
+        sync: false

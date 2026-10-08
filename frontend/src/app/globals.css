@@ -1,0 +1,30 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Cloudscape styles its own components; give plain elements the same typeface and dark-mode colours. */
+body {
+  font-family: 'Open Sans', 'Helvetica Neue', Roboto, Arial, sans-serif;
+  font-size: 14px;
+  background: #ffffff;
+  color: #0f141a;
+}
+
+body.awsui-dark-mode {
+  background: #0f141a;
+  color: #c6c6cd;
+}
+
+/* Long DNS values (TXT, DS) should wrap inside table cells and key-value pairs. */
+.r53-values {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  word-break: break-all;
+}
+
+.r53-values li + li {
+  margin-top: 2px;
+}

@@ -1,0 +1,72 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 48px;
+  box-sizing: border-box;
+}
+
+.logo {
+  margin: 8px 0 24px;
+}
+
+.panels {
+  display: flex;
+  gap: 32px;
+  align-items: stretch;
+  width: 100%;
+  max-width: 880px;
+  justify-content: center;
+}
+
+.card {
+  flex: 0 1 400px;
+  min-width: 0;
+}
+
+.promo {
+  flex: 0 1 420px;
+  border-radius: 16px;
+  padding: 32px;
+  color: #ffffff;
+  background: radial-gradient(circle at 20% 15%, #6b40ff 0%, #2c1b80 45%, #0f1b4c 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.promo h2 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+.promo p {
+  margin: 0;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.promoButton {
+  align-self: flex-start;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 20px;
+  padding: 6px 18px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.footer {
+  margin-top: 32px;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .promo {
+    display: none;
+  }
+}
