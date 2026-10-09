@@ -17,9 +17,14 @@ Everything runs locally and costs $0: open-source dependencies only, no AWS acco
 
 ## Demo
 
-Hosted link coming soon. Deploy your own copy for free with the Render blueprint; see [Deploy](#deploy).
+- **Live Web Console:** [https://route53-clone-web-kqyn.onrender.com](https://route53-clone-web-kqyn.onrender.com)
+- **API Service:** [https://route53-clone-api-5xfn.onrender.com](https://route53-clone-api-5xfn.onrender.com)
 
 **Demo credentials:** `demo@example.com` / `demo`. You can also sign in as an IAM user with account `1234-5678-9012`, user name `demo-user` and password `demo`.
+
+> [!NOTE]
+> Deployed on Render's free tier. Services sleep after 15 minutes of inactivity; please allow ~30–50 seconds on the first request for the free container to wake up. The SQLite database resets and cleanly re-seeds with demo data on container restarts.
+
 
 ---
 
