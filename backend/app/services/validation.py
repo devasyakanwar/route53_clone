@@ -111,7 +111,8 @@ def is_domain_value(value: str, allow_root: bool = False) -> bool:
 
 
 def _int_in(token: str, lo: int, hi: int) -> bool:
-    return token.isdigit() and lo <= int(token) <= hi
+    # isascii() matters: str.isdigit() is also true for characters like '²' that int() can't parse.
+    return token.isascii() and token.isdigit() and lo <= int(token) <= hi
 
 
 def _string_length(content: str) -> int:
@@ -145,6 +146,8 @@ def _validate_a(v: str) -> str:
 
 def _validate_aaaa(v: str) -> str:
     try:
+        if "%" in v:  # Python accepts zone ids like fe80::1%eth0; DNS records can't carry them
+            raise ValueError(v)
         ipaddress.IPv6Address(v)
     except ValueError:
         raise ValidationError(

@@ -1,8 +1,8 @@
 'use client';
 
 import Flashbar, { type FlashbarProps } from '@cloudscape-design/components/flashbar';
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
-import { api } from '@/lib/api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { api, subscribeWaking } from '@/lib/api';
 import type { ChangeInfo } from '@/lib/types';
 
 export interface NotifyOptions {
@@ -63,6 +63,23 @@ export function FlashbarProvider({ children }: { children: ReactNode }) {
       return id;
     },
     [dismiss],
+  );
+
+  // While any request is being retried because the server is waking up, show one in-progress notice.
+  useEffect(
+    () =>
+      subscribeWaking(waking => {
+        if (waking) {
+          push('info', {
+            id: 'server-waking',
+            header: 'Waking up the server',
+            content: 'The free hosting plan puts the server to sleep when idle. This can take up to a minute.',
+          }, true);
+        } else {
+          dismiss('server-waking');
+        }
+      }),
+    [push, dismiss],
   );
 
   const trackChange = useCallback(

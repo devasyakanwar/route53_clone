@@ -6,6 +6,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.errors import ApiError, FieldError
@@ -417,7 +418,17 @@ def apply_change_batch(db: Session, zone: HostedZone, batch: ChangeBatch) -> Cha
 
     zone.record_count = len(state)
     change = record_change(db, zone.id, batch.comment, batch.model_dump(mode="json"))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Another request changed the same record between our read and our write. The unique index kept the data
+        # consistent; report it as a retryable conflict instead of an HTTP 500.
+        db.rollback()
+        raise ApiError(
+            409,
+            "ConcurrentModification",
+            "The hosted zone was changed by another request at the same time. Refresh and try again.",
+        ) from None
     return change
 
 

@@ -23,7 +23,7 @@ Everything runs locally and costs $0: open-source dependencies only, no AWS acco
 **Demo credentials:** `demo@example.com` / `demo`. You can also sign in as an IAM user with account `1234-5678-9012`, user name `demo-user` and password `demo`.
 
 > [!NOTE]
-> Deployed on Render's free tier. Services sleep after 15 minutes of inactivity; please allow ~30–50 seconds on the first request for the free container to wake up. The SQLite database resets and cleanly re-seeds with demo data on container restarts.
+> Deployed on Render's free tier. Services sleep after 15 minutes of inactivity; please allow ~30–50 seconds on the first request for the free container to wake up (the app opens a "Waking up the server" notice and signs you in automatically once it's ready). The SQLite database resets and cleanly re-seeds with demo data on container restarts.
 
 
 ---
@@ -62,11 +62,11 @@ Open <http://localhost:3000>. On Windows, `./dev.ps1` from the repo root starts 
 ### Tests
 
 ```bash
-cd backend && pytest --cov=app/services        # 103 tests, ~93% coverage of services; uses a temp SQLite DB
+cd backend && pytest --cov=app/services        # 106 tests, ~93% coverage of services; uses a temp SQLite DB
 cd e2e && npm install && npx playwright install chromium && npx playwright test   # needs both servers running
 ```
 
-The Playwright suite (7 tests) runs the whole walkthrough: sign in → create a zone → create one record of each of
+The Playwright suite (10 tests) runs the whole walkthrough: sign in → create a zone → create one record of each of
 the 9 required types in one batch → edit one → bulk-delete them → delete the zone → sign out → sign in. It also covers
 the dashboard, the health check lifecycle (create → Unknown → Healthy → edit → delete), bulk zone delete and export,
 navigation, filters and keyboard shortcuts.
@@ -211,7 +211,7 @@ Full schema: <http://localhost:8000/docs>.
 - [x] Record creation wizard (Choose routing policy → Configure records → Review and create)
 - [x] "Test record" modal that answers from the zone's records, wildcards included
 - [x] Mocked change propagation: a PENDING flash that turns into INSYNC
-- [x] pytest suite (103 tests) and a Playwright end-to-end suite (7 tests)
+- [x] pytest suite (106 tests) and a Playwright end-to-end suite (10 tests)
 
 ### Keyboard shortcuts
 
@@ -252,7 +252,7 @@ Free hosting with [Render](https://render.com), using the blueprint in [`render.
 
 The browser only talks to the Next.js service, which proxies `/api/*` to FastAPI, so the session cookie stays
 first-party and no CORS setup is needed. On the free plan the disk is ephemeral, so SQLite is recreated and re-seeded
-with the demo data on each restart or redeploy, and services sleep when idle (the first request takes about a minute).
+with the demo data on each restart or redeploy, and services sleep when idle (the first request takes about a minute; the web app's `/api` proxy waits up to two minutes and the browser retries automatically).
 
 ## Repository layout
 

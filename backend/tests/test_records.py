@@ -288,3 +288,21 @@ def test_request_validation_error_shape(zone: dict[str, Any], client: TestClient
     r = client.post(f"/api/v1/hostedzones/{zone['id']}/rrset", json={"changes": []})
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "ValidationError"
+
+
+def test_concurrent_conflict_is_a_409_not_a_500(client: TestClient, zone: dict[str, Any], change: Any, monkeypatch: Any) -> None:
+    """Simulates losing a race: the engine's read is stale, so only the database's unique index catches the duplicate."""
+    record = rs("www.example.com", "A")
+    assert change(zone["id"], ("CREATE", record)).status_code == 200
+
+    from app.services import records as record_service
+
+    monkeypatch.setattr(record_service, "_zone_rows", lambda db, zone: [])  # a stale snapshot with no records
+    r = change(zone["id"], ("CREATE", record))
+    assert r.status_code == 409
+    assert r.json()["error"]["code"] == "ConcurrentModification"
+    monkeypatch.undo()
+
+    # Nothing changed, and the zone is still usable.
+    assert len([x for x in records(client, zone["id"]) if x["name"] == "www.example.com."]) == 1
+    assert change(zone["id"], ("CREATE", rs("api.example.com", "A"))).status_code == 200

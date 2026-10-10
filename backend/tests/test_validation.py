@@ -89,3 +89,15 @@ def test_ttl() -> None:
     assert validate_ttl(2147483647) is None
     assert validate_ttl(None)
     assert validate_ttl(-1)
+
+
+def test_non_ascii_digits_are_rejected_not_crashing() -> None:
+    # str.isdigit() is True for these, int() raises: this used to surface as an HTTP 500.
+    for rtype, value in [("MX", "² mail.example.com"), ("SRV", "1 ٣ 5060 host.example.com"), ("CAA", '² issue "a.com"')]:
+        _, errors = validate_values(rtype, [value])
+        assert errors, (rtype, value)
+
+
+def test_ipv6_zone_ids_are_rejected() -> None:
+    assert validate_values("AAAA", ["fe80::1%eth0"])[1]
+    assert validate_values("AAAA", ["fe80::1"])[1] == []

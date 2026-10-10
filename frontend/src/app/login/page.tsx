@@ -11,9 +11,9 @@ import Input from '@cloudscape-design/components/input';
 import Link from '@cloudscape-design/components/link';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Tiles from '@cloudscape-design/components/tiles';
-import { Suspense, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { api, ApiError, errorMessage } from '@/lib/api';
+import { api, ApiError, errorMessage, subscribeWaking, warmUpServer } from '@/lib/api';
 import styles from './login.module.css';
 
 type UserType = 'root' | 'iam';
@@ -34,6 +34,13 @@ function SignInForm() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState('');
+  const [waking, setWaking] = useState(false);
+
+  // Wake a sleeping API while the user is still typing, and show a notice if sign-in has to wait for it.
+  useEffect(() => {
+    warmUpServer();
+    return subscribeWaking(setWaking);
+  }, []);
 
   const next = (e: FormEvent) => {
     e.preventDefault();
@@ -173,6 +180,12 @@ function SignInForm() {
                   }
                 >
                   <SpaceBetween size="l">
+                    {waking && !error && (
+                      <Alert type="info" header="Waking up the server">
+                        The free hosting plan puts the server to sleep when it's idle. This can take up to a minute;
+                        you'll be signed in automatically as soon as it's ready.
+                      </Alert>
+                    )}
                     {!!error && (
                       <Alert type="error" header="Sign-in failed">
                         {error}

@@ -13,7 +13,7 @@ backend is **FastAPI** with **SQLAlchemy 2.0** on **SQLite**. It implements mock
 records (CRUD for A, AAAA, CNAME, TXT, MX, NS, PTR, SRV, CAA and more), health checks and a dashboard. Record changes
 follow the real Route 53 API: they are sent as an **atomic change batch** (CREATE / UPSERT / DELETE), so either every
 change applies or none does. Bonus features: BIND zone file import, JSON/BIND export, dark mode, keyboard shortcuts
-and bulk operations. It is covered by 103 backend tests and 7 browser end-to-end tests.
+and bulk operations. It is covered by 106 backend tests and 10 browser end-to-end tests.
 
 ---
 
@@ -221,7 +221,7 @@ frontend/
   src/hooks/         SWR hooks: useSession, useZones, useRecords, useHealthChecks, useLocalStorage
   src/lib/           api.ts (typed client), types.ts, validators.ts, format.ts, theme.ts, shortcuts.ts, download.ts
 
-e2e/                 Playwright tests (7) and the screenshot script
+e2e/                 Playwright tests (10) and the screenshot script
 ```
 
 ---
@@ -430,18 +430,21 @@ Plus: TTL 0–2147483647, no duplicate values, wildcards only as the leftmost la
 | React warning "Each child in a list should have a unique key" | `{error && <X/>}` with `error === ''` renders an empty text node inside Cloudscape's child list | Use real booleans: `{!!error && <X/>}` |
 | Alt+S did nothing | Focused the hidden measuring copy of the search input in `TopNavigation` | Focus the visible input only |
 | Tests failed in dev mode only | The Next.js dev-tools "N" button also matches a `Next` button locator | Exact-name locators (`{ exact: true }`) |
+| MX priority `²` returned HTTP 500 | `str.isdigit()` is true for `²` but `int()` can't parse it | `token.isascii() and token.isdigit()` plus a regression test |
+| IPv6 `fe80::1%eth0` accepted | Python's parser accepts zone ids | Reject `%` in AAAA values |
+| Two racing creates gave HTTP 500 for the loser | Unhandled `IntegrityError` at commit (the unique index kept the data correct) | Catch it, roll back, return 409 `ConcurrentModification` |
 
 ---
 
 ## 10. Testing strategy
 
-- **Backend (pytest, 103 tests):** each test gets a fresh temporary SQLite database with two users. Covers auth
+- **Backend (pytest, 106 tests):** each test gets a fresh temporary SQLite database with two users. Covers auth
   (cookie flags, logout invalidates the token, IAM login), zones (validation, NS/SOA creation, pagination, delete
   guard, per-user isolation, bulk delete atomicity, export), records (every type valid and invalid, atomic batches,
   duplicates, CNAME rules, NS/SOA protection, wildcards, alias, every routing policy, change status), BIND
   (import/preview/round-trip), validation units, and health checks (status rules, validation, update rules, in-use
   guard, metrics, dashboard). Run: `cd backend && pytest --cov=app/services`.
-- **End-to-end (Playwright, 7 tests)** against the running app: the full zone/record lifecycle, every side-nav link,
+- **End-to-end (Playwright, 10 tests)** against the running app: the full zone/record lifecycle, every side-nav link,
   filters + URL persistence + help panel + shortcuts, dashboard, health check lifecycle, bulk zone delete and export.
 - **Why both:** unit/API tests prove the rules; browser tests prove the UI actually wires them up.
 

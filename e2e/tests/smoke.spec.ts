@@ -299,3 +299,45 @@ test('opens on the dashboard', async ({ page }) => {
   await page.getByRole('link', { name: 'Amazon Web Services' }).click();
   await expect(page).toHaveURL(/\/route53\/v2\/home$/);
 });
+
+test.describe('sleeping server (free hosting)', () => {
+  async function typeCredentials(page: Page, password: string) {
+    await page.getByPlaceholder('demo@example.com').fill('demo@example.com');
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.locator('input[type=password]').fill(password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  }
+
+  test('wakes the API when the login page opens', async ({ page }) => {
+    const warmUp = page.waitForRequest(r => new URL(r.url()).pathname === '/api/health');
+    await page.goto('/login');
+    await warmUp;
+  });
+
+  test('sign-in retries while the server wakes up, then succeeds', async ({ page }) => {
+    let attempts = 0;
+    await page.route('**/api/v1/auth/login', route => {
+      attempts += 1;
+      // What Render's edge returns while the API is still asleep: a bare 503 without the API's JSON error body.
+      if (attempts <= 2) return route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' });
+      return route.continue();
+    });
+    await page.goto('/login');
+    await typeCredentials(page, 'demo');
+    await expect(page.getByText('Waking up the server')).toBeVisible();
+    await expect(page).toHaveURL(/\/route53\/v2\/home$/, { timeout: 30_000 });
+    expect(attempts).toBe(3);
+  });
+
+  test('a real error from the API is shown immediately, not retried', async ({ page }) => {
+    let attempts = 0;
+    page.on('request', r => {
+      if (r.url().endsWith('/api/v1/auth/login')) attempts += 1;
+    });
+    await page.goto('/login');
+    await typeCredentials(page, 'wrong-password');
+    await expect(page.getByText('Your authentication information is incorrect')).toBeVisible();
+    await expect(page.getByText('Waking up the server')).toHaveCount(0);
+    expect(attempts).toBe(1);
+  });
+});
