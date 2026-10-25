@@ -11,7 +11,6 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Textarea from '@cloudscape-design/components/textarea';
 import Toggle from '@cloudscape-design/components/toggle';
 import { InfoLink } from '@/components/common/InfoLink';
-import { useHealthChecks } from '@/hooks/useHealthChecks';
 import { displayName } from '@/lib/format';
 import type { RecordType, RoutingPolicy } from '@/lib/types';
 import type { RecordRowState, RowErrors } from './recordRow';
@@ -59,8 +58,6 @@ export function RecordFields({ row, zoneName, errors, onChange, identityLocked, 
   const policy = row.routingPolicy;
   const isSoa = row.type === 'SOA';
   const err = (field: keyof RowErrors) => errors[field];
-  const { healthChecks } = useHealthChecks();
-  const healthCheckOptions = (healthChecks ?? []).map(h => ({ value: h.id, label: h.name, description: `${h.status} · ${h.description}` }));
 
   return (
     <SpaceBetween size="l">
@@ -322,25 +319,6 @@ export function RecordFields({ row, zoneName, errors, onChange, identityLocked, 
               </FormField>
             </div>
           )}
-          <FormField
-            label={
-              <span>
-                Health check <i>- optional</i>
-              </span>
-            }
-          >
-            <Select
-              selectedOption={
-                row.healthCheckId
-                  ? healthCheckOptions.find(h => h.value === row.healthCheckId) ?? { value: row.healthCheckId, label: row.healthCheckId }
-                  : { value: '', label: 'No health check' }
-              }
-              onChange={e => onChange({ healthCheckId: e.detail.selectedOption.value ?? '' })}
-              options={[{ value: '', label: 'No health check' }, ...healthCheckOptions]}
-              statusType={healthChecks ? 'finished' : 'loading'}
-              loadingText="Loading health checks"
-            />
-          </FormField>
           <div data-has-error={!!err('set_identifier')}>
             <FormField
               label="Record ID"

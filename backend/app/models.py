@@ -136,7 +136,6 @@ class RecordSet(Base):
     # Extra routing data for IP-based and geoproximity policies (stored, not evaluated).
     cidr_routing: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     geoproximity: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    health_check_id: Mapped[str | None] = mapped_column(String)
     alias_target: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
@@ -164,71 +163,6 @@ class ResourceRecord(Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
     record_set: Mapped[RecordSet] = relationship(back_populates="resource_records")
-
-
-HEALTH_CHECK_TYPES = (
-    "HTTP",
-    "HTTPS",
-    "HTTP_STR_MATCH",
-    "HTTPS_STR_MATCH",
-    "TCP",
-    "CALCULATED",
-    "CLOUDWATCH_METRIC",
-)
-
-
-class HealthCheck(Base):
-    __tablename__ = "health_checks"
-    __table_args__ = (
-        UniqueConstraint("owner_id", "caller_reference"),
-        CheckConstraint("type IN (" + ",".join(f"'{t}'" for t in HEALTH_CHECK_TYPES) + ")", name="ck_health_check_type"),
-        Index("ix_health_checks_owner", "owner_id"),
-    )
-
-    id: Mapped[str] = mapped_column(String, primary_key=True)  # UUID, like Route 53
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    caller_reference: Mapped[str] = mapped_column(String, nullable=False)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    type: Mapped[str] = mapped_column(String, nullable=False)
-    # Endpoint checks
-    ip_address: Mapped[str | None] = mapped_column(String)
-    fqdn: Mapped[str | None] = mapped_column(String)
-    port: Mapped[int | None] = mapped_column(Integer)
-    resource_path: Mapped[str | None] = mapped_column(String)
-    search_string: Mapped[str | None] = mapped_column(String)
-    request_interval: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
-    failure_threshold: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
-    measure_latency: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    enable_sni: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    regions: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
-    # Calculated checks
-    child_health_checks: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
-    health_threshold: Mapped[int | None] = mapped_column(Integer)
-    # CloudWatch alarm checks: {"alarm_name", "region", "insufficient_data_status"}
-    cloudwatch_alarm: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    inverted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    disabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    # "Get notified when health check fails": {"sns_topic", "emails": [...]} or NULL
-    notification: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
-    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-
-    tags: Mapped[list[HealthCheckTag]] = relationship(
-        back_populates="health_check", cascade="all, delete-orphan", passive_deletes=True, order_by="HealthCheckTag.key"
-    )
-
-
-class HealthCheckTag(Base):
-    __tablename__ = "health_check_tags"
-
-    health_check_id: Mapped[str] = mapped_column(
-        ForeignKey("health_checks.id", ondelete="CASCADE"), primary_key=True
-    )
-    key: Mapped[str] = mapped_column(String, primary_key=True)
-    value: Mapped[str] = mapped_column(String, default="", nullable=False)
-
-    health_check: Mapped[HealthCheck] = relationship(back_populates="tags")
 
 
 class Change(Base):

@@ -156,6 +156,7 @@ test('hosted zone and record lifecycle', async ({ page }) => {
 test('every side navigation link routes somewhere', async ({ page }) => {
   await signIn(page);
   for (const [section, link] of [
+    [null, 'Health checks'],
     [null, 'Profiles'],
     ['Traffic flow', 'Traffic policies'],
     ['Resolver', 'Inbound endpoints'],
@@ -206,58 +207,7 @@ test('dashboard summarizes resources', async ({ page }) => {
   await expect(page.getByText("Domain registration isn't available in this clone")).toBeVisible();
   await page.getByRole('link', { name: /Health checks$/ }).first().click();
   await expect(page).toHaveURL(/\/healthchecks$/);
-});
-
-test('health check lifecycle', async ({ page }) => {
-  const name = `smoke-hc-${Date.now()}`;
-  await signIn(page);
-  await page.goto('/route53/v2/healthchecks');
-  await expect(page.getByRole('heading', { name: /Health checks/ }).first()).toBeVisible();
-
-  await page.getByRole('button', { name: 'Create health check' }).click();
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByText('Enter a name for the health check.')).toBeVisible();
-  await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByRole('textbox', { name: 'IP address' }).fill('198.51.100.80');
-  await page.getByRole('textbox', { name: 'Path' }).fill('health');
-  await expect(page.getByText('http://198.51.100.80:80/health')).toBeVisible();
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Get notified when health check fails' }).first()).toBeVisible();
-  await page.getByRole('radio', { name: 'Yes' }).check({ force: true });
-  await page.getByRole('radio', { name: 'New SNS topic' }).check({ force: true });
-  await page.getByPlaceholder('my-health-check-alerts').fill('smoke-alerts');
-  await page.getByPlaceholder('ops@example.com, oncall@example.com').fill('not-an-email');
-  await page.getByRole('button', { name: 'Create health check' }).click();
-  await expect(page.getByText('not-an-email is not a valid email address.')).toBeVisible();
-  await page.getByPlaceholder('ops@example.com, oncall@example.com').fill('ops@example.com');
-  await page.getByRole('button', { name: 'Create health check' }).click();
-
-  await expect(page.getByText(`Health check ${name} was successfully created.`)).toBeVisible();
-  const row = page.getByRole('table', { name: 'Health checks' }).getByRole('row').filter({ has: page.getByText(name, { exact: true }) });
-  await expect(row).toContainText('Unknown');
-  await expect(row).toContainText('1 of 1 in');
-  await expect(row).toContainText('Healthy', { timeout: 30_000 });
-
-  // Edit via the split panel.
-  await row.getByRole('cell').nth(3).click();
-  await expect(page.getByRole('tab', { name: 'Monitoring' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Health checkers' }).click();
-  await expect(page.getByText('Success: HTTP Status Code 200, OK').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Edit health check' }).last().click();
-  await expect(page.getByRole('heading', { name: 'Edit health check' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Protocol/ }).first()).toBeDisabled();
-  await page.getByRole('textbox', { name: 'IP address' }).fill('203.0.113.80');
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByText(`Health check ${name} was successfully updated.`)).toBeVisible();
-  await expect(row).toContainText('Unhealthy');
-
-  // Delete with typed confirmation.
-  await row.getByRole('checkbox').check({ force: true });
-  await page.getByRole('button', { name: 'Delete health check' }).click();
-  await page.getByRole('dialog').getByPlaceholder('delete').fill('delete');
-  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
-  await expect(page.getByText(`Health check ${name} was successfully deleted.`)).toBeVisible();
-  await expect(row).toHaveCount(0);
+  await expect(page.getByText('This feature is coming soon.')).toBeVisible();
 });
 
 test('bulk delete and export hosted zones', async ({ page }) => {
@@ -340,4 +290,16 @@ test.describe('sleeping server (free hosting)', () => {
     await expect(page.getByText('Waking up the server')).toHaveCount(0);
     expect(attempts).toBe(1);
   });
+});
+
+test('health checks is a coming soon page, and the old health check URLs do not break', async ({ page }) => {
+  await signIn(page);
+  for (const path of ['/route53/v2/healthchecks', '/route53/v2/healthchecks/create']) {
+    await page.goto(path);
+    await expect(page.getByText('This feature is coming soon.')).toBeVisible();
+  }
+  await page.goto('/route53/v2/healthchecks');
+  await expect(page.getByRole('heading', { name: 'Health checks', level: 1 })).toBeVisible();
+  // The API for it is gone.
+  expect((await page.request.get('/api/v1/healthchecks')).status()).toBe(404);
 });

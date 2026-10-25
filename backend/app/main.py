@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.errors import ApiError
-from app.routers import auth, changes, dashboard, health_checks, hosted_zones, import_export, records
+from app.routers import auth, changes, dashboard, hosted_zones, import_export, records
 
 
 @asynccontextmanager
@@ -73,6 +73,5 @@ for router in (
     records.router,
     changes.router,
     import_export.router,
-    health_checks.router,
 ):
     app.include_router(router, prefix="/api/v1")

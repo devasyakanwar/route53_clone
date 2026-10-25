@@ -21,7 +21,6 @@ export interface RecordRowState {
   cidrLocation: string;
   geoproximityRegion: string;
   geoproximityBias: string;
-  healthCheckId: string;
   aliasEndpointType: string;
   aliasRegion: string;
   aliasTarget: string;
@@ -42,8 +41,7 @@ export type RowField =
   | 'geo_location'
   | 'cidr_routing'
   | 'geoproximity'
-  | 'alias_target'
-  | 'health_check_id';
+  | 'alias_target';
 
 let counter = 0;
 export const newRowKey = () => `row-${Date.now()}-${counter++}`;
@@ -66,7 +64,6 @@ export function emptyRow(policy: RoutingPolicy = 'SIMPLE'): RecordRowState {
     cidrLocation: '',
     geoproximityRegion: '',
     geoproximityBias: '0',
-    healthCheckId: '',
     aliasEndpointType: '',
     aliasRegion: '',
     aliasTarget: '',
@@ -92,7 +89,6 @@ export function recordToRow(r: RecordSet, zoneName: string): RecordRowState {
     cidrLocation: r.cidr_routing?.location_name ?? '',
     geoproximityRegion: r.geoproximity?.aws_region ?? '',
     geoproximityBias: r.geoproximity?.bias != null ? String(r.geoproximity.bias) : '0',
-    healthCheckId: r.health_check_id ?? '',
     aliasEndpointType: r.alias_target?.endpoint_type ?? (r.alias_target ? 'record' : ''),
     aliasRegion: r.alias_target?.region ?? '',
     aliasTarget: r.alias_target ? r.alias_target.dns_name.replace(/\.$/, '') : '',
@@ -117,7 +113,6 @@ export function rowToInput(row: RecordRowState, zoneName: string): RecordSetInpu
     values: [],
     routing_policy: policy,
     set_identifier: policy === 'SIMPLE' ? null : row.setIdentifier.trim() || null,
-    health_check_id: row.healthCheckId || null,
   };
   if (row.alias) {
     input.alias_target = {
@@ -234,7 +229,7 @@ export function mapServerField(field: string | null): { row: number; field: RowF
   if (!m) return null;
   const known: RowField[] = [
     'name', 'type', 'values', 'ttl', 'routing_policy', 'set_identifier', 'weight', 'region', 'failover',
-    'geo_location', 'cidr_routing', 'geoproximity', 'alias_target', 'health_check_id',
+    'geo_location', 'cidr_routing', 'geoproximity', 'alias_target',
   ];
   const f = known.includes(m[2] as RowField) ? (m[2] as RowField) : 'name';
   return { row: Number(m[1]), field: f };

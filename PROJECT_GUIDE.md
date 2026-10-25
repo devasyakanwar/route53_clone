@@ -10,10 +10,10 @@ its own; the last section has short answers to questions you are likely to be as
 A full-stack clone of the Amazon Route 53 console. The frontend is **Next.js 16 (App Router, TypeScript strict)**
 using **Cloudscape**, AWS's own open-source design system, so the UI looks and behaves like the real console. The
 backend is **FastAPI** with **SQLAlchemy 2.0** on **SQLite**. It implements mocked login, hosted zones (CRUD), DNS
-records (CRUD for A, AAAA, CNAME, TXT, MX, NS, PTR, SRV, CAA and more), health checks and a dashboard. Record changes
+records (CRUD for A, AAAA, CNAME, TXT, MX, NS, PTR, SRV, CAA and more) and a dashboard. Record changes
 follow the real Route 53 API: they are sent as an **atomic change batch** (CREATE / UPSERT / DELETE), so either every
 change applies or none does. Bonus features: BIND zone file import, JSON/BIND export, dark mode, keyboard shortcuts
-and bulk operations. It is covered by 106 backend tests and 10 browser end-to-end tests.
+and bulk operations. It is covered by 89 backend tests and 10 browser end-to-end tests.
 
 ---
 
@@ -28,12 +28,12 @@ and bulk operations. It is covered by 106 backend tests and 10 browser end-to-en
 | Hosted zones: view, search, create, edit, delete | Table with property filter, create form, edit form, delete modal with guard | `services/zones.py`, `components/hosted-zones/` |
 | DNS records: view, search, create, edit, delete | Records table + split panel, Quick create (multi-row), edit, bulk delete | `services/records.py`, `services/validation.py`, `components/records/` |
 | Navigation, tables, forms, search, filters, pagination, modals, notifications | Cloudscape AppLayout, SideNavigation, Table, PropertyFilter, Pagination, Modal, Flashbar | `components/shell/`, `components/common/tableConfig.tsx`, `components/notifications/` |
-| Mocked sections (Dashboard, Traffic policies, Health checks, Resolver, Profiles) | Dashboard and Health checks are fully built; the rest show a "Coming soon" page | `app/route53/v2/home/`, `app/route53/v2/healthchecks/`, `app/route53/v2/[...slug]/` |
+| Mocked sections (Dashboard, Traffic policies, Health checks, Resolver, Profiles) | Dashboard is fully built; the rest, including Health checks, show a "Coming soon" page | `app/route53/v2/home/`, `app/route53/v2/[...slug]/` |
 | Bonus: BIND import | dnspython parser, preview (dry run), then one atomic batch | `services/bind.py`, `ImportZoneFileModal.tsx` |
 | Bonus: JSON/BIND export | Per zone, and for all or selected zones | `services/bind.py`, `routers/import_export.py`, `routers/hosted_zones.py` |
 | Bonus: dark mode | Cloudscape `applyMode`, saved in localStorage, applied before first paint | `lib/theme.ts`, `components/shell/TopNav.tsx` |
 | Bonus: keyboard shortcuts | Global key handler, help modal on `?` | `components/shell/ShortcutsProvider.tsx`, `lib/shortcuts.ts` |
-| Bonus: bulk operations | Multi-select delete for zones, records and health checks (each atomic); multi-row create | `DeleteZoneModal.tsx`, `DeleteRecordsModal.tsx`, `DeleteHealthChecksModal.tsx` |
+| Bonus: bulk operations | Multi-select delete for zones and records (each atomic); multi-row create | `DeleteZoneModal.tsx`, `DeleteRecordsModal.tsx` |
 | README: setup, architecture, schema, API | Done, with Mermaid diagrams and screenshots | `README.md` |
 | Hosted demo link | Render blueprint ready (`render.yaml`); deploying needs your account | `render.yaml` |
 
@@ -93,7 +93,7 @@ and bulk operations. It is covered by 106 backend tests and 10 browser end-to-en
 - Errors look like Route 53's: `{"error": {"code": "InvalidChangeBatch", "message": "...", "field": "changes[2].values[0]"}}`.
   The `field` path lets the frontend show the error on the exact row and field.
 - Other Route 53 behaviours copied: zone IDs `Z` + 20 chars, change IDs `C` + 20 chars, change status `PENDING` →
-  `INSYNC`, `HostedZoneNotEmpty`, `HealthCheckInUse`, `NoSuchHostedZone`, `\052` escaping for `*` in names.
+  `INSYNC`, `HostedZoneNotEmpty`, `NoSuchHostedZone`, `\052` escaping for `*` in names.
 
 ### 3.6 SQLite details
 - **WAL mode and `foreign_keys = ON`** are set on every connection (`db.py`). SQLite doesn't enforce foreign keys
@@ -105,7 +105,7 @@ and bulk operations. It is covered by 106 backend tests and 10 browser end-to-en
 ### 3.7 SWR for data fetching
 - Small, typed, handles caching and revalidation. After a mutation the relevant keys are revalidated
   (`mutate(keys.zones)` etc.). Deletes update the cache optimistically, then revalidate.
-- Health checks poll every 15 s, because their status changes on its own (Unknown → Healthy).
+- The Dashboard polls every 15 s so its counts stay fresh.
 
 ### 3.8 Validation written twice, on purpose
 - Server rules live in `backend/app/services/validation.py`; `frontend/src/lib/validators.ts` mirrors them rule for
@@ -137,7 +137,7 @@ Next.js 16 (frontend/)
                                   ▼
                        FastAPI (backend/app)
                          routers/   → HTTP only: parse request, call a service, shape response
-                         services/  → business rules: validation, change batches, BIND, health checks
+                         services/  → business rules: validation, change batches, BIND
                          models.py  → SQLAlchemy tables
                                   ▼
                        SQLite (route53.db, WAL, FKs on)
@@ -179,23 +179,22 @@ backend/
     config.py        pydantic-settings: DATABASE_URL, SESSION_COOKIE_SECURE, CORS_ORIGINS, AUTO_SEED, ...
     db.py            Engine, SQLite PRAGMAs, session factory, get_db dependency
     models.py        All tables (users, sessions, hosted_zones, zone_vpcs, zone_tags, record_sets,
-                     resource_records, changes, health_checks, health_check_tags)
+                     resource_records, changes)
     errors.py        ApiError / FieldError → Route 53-style error JSON
     deps.py          get_current_user, get_owned_zone (auth + ownership checks)
-    seed.py          Demo user, 3 hosted zones (28 record sets including the NS/SOA pairs), 4 health checks
-    schemas/         Pydantic request/response models (auth, zones, records, health_checks, common)
-    routers/         auth, dashboard, hosted_zones, records, changes, import_export, health_checks
+    seed.py          Demo user, 3 hosted zones (28 record sets including the NS/SOA pairs)
+    schemas/         Pydantic request/response models (auth, zones, records, dashboard, common)
+    routers/         auth, dashboard, hosted_zones, records, changes, import_export
     services/
       auth.py          bcrypt, session create/lookup/delete
       zones.py         create (with NS/SOA), list/search/sort/page, update, tags, delete + bulk delete
       records.py       Draft model, normalisation, the atomic change-batch engine, listing
       validation.py    Domain-name rules and per-type value validators
       bind.py          Zone file parsing (dnspython) and JSON/BIND export
-      health_checks.py Validation, simulated status, checker observations, metrics, in-use guard
       changes.py       Change rows and PENDING/INSYNC status
       ids.py           Z.../C... ID generation
       nameservers.py   Deterministic 4-server delegation set
-  tests/             conftest (temp DB, logged-in client), auth, zones, records, validation, bind, health checks
+  tests/             conftest (temp DB, logged-in client), auth, zones, records, validation, bind, dashboard
 
 frontend/
   next.config.ts     transpilePackages for Cloudscape, /api rewrite
@@ -207,7 +206,6 @@ frontend/
       layout.tsx     ConsoleShell (top nav, providers, footer)
       home/          Dashboard
       hostedzones/   List, create, [zoneId] detail, edit, records/create, records/[recordKey]/edit
-      healthchecks/  List, create (wizard), [healthCheckId]/edit
       [...slug]/     "Coming soon" for every other side-nav link
   src/components/
     shell/           TopNav, SideNav, ConsoleShell, ConsolePage (AppLayout wrapper), Footer, ShortcutsProvider
@@ -217,8 +215,7 @@ frontend/
     hosted-zones/    ZonesTable, ZoneForm, ZoneDetails, ZoneTabs, DeleteZoneModal, mock VPCs
     records/         RecordsTable, RecordForm, RecordFields, RecordWizard, split panel, delete/import/test modals,
                      recordRow.ts (form state ↔ API), recordItem.tsx (table rows), recordTypes.ts
-    health-checks/   Table, split panel with tabs, charts, form fields, wizard/edit form, delete modal
-  src/hooks/         SWR hooks: useSession, useZones, useRecords, useHealthChecks, useLocalStorage
+  src/hooks/         SWR hooks: useSession, useZones, useRecords, useDashboard, useLocalStorage
   src/lib/           api.ts (typed client), types.ts, validators.ts, format.ts, theme.ts, shortcuts.ts, download.ts
 
 e2e/                 Playwright tests (10) and the screenshot script
@@ -235,11 +232,9 @@ e2e/                 Playwright tests (10) and the screenshot script
 | `hosted_zones` | `id` like `Z0812345ABCDEFGHIJKLM`. `name` stored **lower-case with a trailing dot** (`example.com.`), as DNS and the Route 53 API do. `caller_reference` unique per owner (Route 53 uses it to make create idempotent). `record_count` is **denormalised**. `name_servers` is a JSON array. |
 | `zone_vpcs` | VPC associations for private zones. Unique (zone, vpc, region). |
 | `zone_tags` | Composite primary key (zone_id, key): a key can appear once per zone. |
-| `record_sets` | One row per record set: name, type (CHECK constraint on the 13 types), TTL (NULL for alias), routing policy and its fields, `health_check_id`, `alias_target` (JSON), `is_default` (the auto NS/SOA). |
+| `record_sets` | One row per record set: name, type (CHECK constraint on the 13 types), TTL (NULL for alias), routing policy and its fields, `alias_target` (JSON), `is_default` (the auto NS/SOA). |
 | `resource_records` | One row per value line, with `position` to keep the user's order. |
 | `changes` | Audit trail of every change batch: ID, zone, comment, time, full JSON payload. |
-| `health_checks` | UUID IDs like Route 53. Type CHECK constraint. Endpoint fields, calculated fields (`child_health_checks` JSON, `health_threshold`), CloudWatch alarm (JSON), `notification` (JSON), `version`. |
-| `health_check_tags` | Composite key (health_check_id, key). |
 
 **Questions you may get about the schema:**
 - **Why a separate `resource_records` table instead of a JSON array of values?** A record set has many values
@@ -276,7 +271,6 @@ This is the most important backend function. Algorithm:
    - Normalise and validate the record set (`normalize_record_set`): type, name inside the zone, CNAME not at the apex,
      SOA only at the apex, alias rules (allowed types, no TTL), TTL range, per-type values, routing-policy fields
      (e.g. weighted needs a weight 0–255 and a Record ID).
-   - Check that a referenced health check exists and belongs to the user.
    - Apply it to the in-memory state: `CREATE` fails if it already exists; `DELETE` fails if it's missing or is a
      default NS/SOA; `UPSERT` creates or replaces (and keeps NS/SOA marked as default).
    - Collect every error with its field path (`changes[i].values[j]`) instead of stopping at the first.
@@ -313,7 +307,7 @@ Plus: TTL 0–2147483647, no duplicate values, wildcards only as the leftmost la
 - Status codes: 400 business-rule errors, 401 not signed in, 404 not found / not yours, 409 conflict, 422 malformed request.
 
 ### 7.5 Ownership and isolation
-- Every zone and health check lookup checks `owner_id`. Another user's resources return **404, not 403**, so their
+- Every zone lookup checks `owner_id`. Another user's resources return **404, not 403**, so their
   existence isn't revealed. There are tests that log in as a second user and check this.
 
 ### 7.6 BIND import/export (`services/bind.py`)
@@ -323,18 +317,7 @@ Plus: TTL 0–2147483647, no duplicate values, wildcards only as the leftmost la
 - Export produces either `ListResourceRecordSets`-shaped JSON or a zone file with `$ORIGIN`/`$TTL`. Alias records
   can't be expressed in BIND, so they're written as comments. A test checks that an export can be re-imported.
 
-### 7.7 Health checks (`services/health_checks.py`)
-- Types: HTTP, HTTPS, HTTP/HTTPS with string matching, TCP, CALCULATED (based on other checks), CLOUDWATCH_METRIC.
-- Rules copied from Route 53: you can't change the type, protocol, request interval or latency graphs after
-  creation; at least 3 health checker Regions if you customise them; failure threshold 1–10; a calculated check can't
-  monitor itself; you can't delete a check that a record or a calculated check uses (`HealthCheckInUse`).
-- **Status is simulated** because nothing is really probed: Unknown for the first 8 seconds; endpoints in
-  203.0.113.0/24 (a documentation-only IP range) or with a host name starting `down.` / containing `unhealthy` are
-  Unhealthy, everything else Healthy; calculated checks count healthy children; disabled checks are always Healthy
-  (as in Route 53); "invert" flips the result. Checker observations and the last hour of metrics are generated
-  deterministically from the check's ID, so they look the same on every refresh.
-
-### 7.8 Change status (`services/changes.py`)
+### 7.7 Change status (`services/changes.py`)
 - Each change is stored with a timestamp; its status is **computed on read**: `INSYNC` once more than 2 seconds have
   passed, otherwise `PENDING`. No background job is needed.
 
@@ -380,16 +363,13 @@ Plus: TTL 0–2147483647, no duplicate values, wildcards only as the leftmost la
 
 ### 8.6 Keyboard shortcuts
 - One `keydown` listener in `ShortcutsProvider`. Pages register handlers with `useShortcuts({create, refresh, delete, ...})`;
-  the Dashboard, Hosted zones, zone detail and Health checks pages all register `c` and `r`.
+  the Dashboard, Hosted zones and zone detail pages all register `c` and `r`.
 - Single-key shortcuts are ignored while typing in a field and while a modal is open; `Alt+S` and `Esc` work
   everywhere. `?` opens the list. `Delete` also accepts `Backspace` (the Mac delete key).
 - **Alt+S gotcha:** Cloudscape's `TopNavigation` renders a hidden copy of the search slot to measure the layout, so a
   plain `querySelector` focuses the invisible input. `focusTopSearch` picks the *visible* input, and on narrow screens
   (where search collapses to an icon) clicks the icon first.
 
-### 8.7 Charts (health checks)
-- Cloudscape `LineChart`: it uses the console's validated data-visualisation colours, has a hover tooltip and works in
-  dark mode. Status and latency are **two separate single-series charts**, never one chart with two y-axes.
 
 ---
 
@@ -409,7 +389,7 @@ Plus: TTL 0–2147483647, no duplicate values, wildcards only as the leftmost la
    delete zone → sign out → sign in).
 8. **Docs:** README with Mermaid diagrams, screenshots in light and dark mode.
 9. **Second round, after comparing with the assignment:** added bulk zone delete and all-zones export (bonus items
-   that were partial), built the Dashboard and Health checks sections, added a Render deployment blueprint and
+   that were partial), built the Dashboard and a Health checks section (later reduced to a "Coming soon" page), added a Render deployment blueprint and
    `PLAN.md`, extended tests to 103 backend and 6 end-to-end, made the first git commit.
 10. **Third round, from using the site:** Light/Dark/Export/Shortcuts entries in the account menu; fixed the
     hydration errors and the broken Alt+S; added `c`/`r` shortcuts to the Dashboard; then a dead-code pass
@@ -438,14 +418,13 @@ Plus: TTL 0–2147483647, no duplicate values, wildcards only as the leftmost la
 
 ## 10. Testing strategy
 
-- **Backend (pytest, 106 tests):** each test gets a fresh temporary SQLite database with two users. Covers auth
+- **Backend (pytest, 89 tests):** each test gets a fresh temporary SQLite database with two users. Covers auth
   (cookie flags, logout invalidates the token, IAM login), zones (validation, NS/SOA creation, pagination, delete
   guard, per-user isolation, bulk delete atomicity, export), records (every type valid and invalid, atomic batches,
   duplicates, CNAME rules, NS/SOA protection, wildcards, alias, every routing policy, change status), BIND
-  (import/preview/round-trip), validation units, and health checks (status rules, validation, update rules, in-use
-  guard, metrics, dashboard). Run: `cd backend && pytest --cov=app/services`.
+  (import/preview/round-trip), validation units, and the dashboard. Run: `cd backend && pytest --cov=app/services`.
 - **End-to-end (Playwright, 10 tests)** against the running app: the full zone/record lifecycle, every side-nav link,
-  filters + URL persistence + help panel + shortcuts, dashboard, health check lifecycle, bulk zone delete and export.
+  filters + URL persistence + help panel + shortcuts, dashboard, the Coming soon pages, bulk zone delete and export, the sleeping-server retry.
 - **Why both:** unit/API tests prove the rules; browser tests prove the UI actually wires them up.
 
 ---
@@ -464,7 +443,7 @@ Plus: TTL 0–2147483647, no duplicate values, wildcards only as the leftmost la
 ## 12. Known limitations and what I'd do next
 
 - No real DNS: nothing is served; "Test record" answers from the database.
-- Routing policies and alias targets are stored and validated but not evaluated; health checks are simulated.
+- Routing policies and alias targets are stored and validated but not evaluated.
 - Single demo user; VPCs, SNS topics and CloudWatch alarms are mock lists.
 - Lists are filtered client-side (fine up to thousands of records).
 - The UI is client-rendered (no SSR/SEO), a deliberate choice for a logged-in console (see 3.2).
@@ -514,7 +493,7 @@ Simple caching and revalidation with typed hooks; after each mutation the affect
 Same origin for the browser: first-party cookie, no CORS, no third-party cookie issues once deployed.
 
 **How are IDs and name servers generated?**
-Zone IDs are `Z` + 20 random uppercase alphanumerics, change IDs `C` + 20, health check IDs UUIDs, matching Route 53's
+Zone IDs are `Z` + 20 random uppercase alphanumerics, change IDs `C` + 20, matching Route 53's
 formats. Name servers are derived from a hash of the zone ID, one per TLD (.com, .net, .org, .co.uk), so they're
 stable for a zone.
 

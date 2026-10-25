@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.errors import ApiError, FieldError
-from app.models import RECORD_TYPES, Change, HealthCheck, HostedZone, RecordSet, ResourceRecord
+from app.models import RECORD_TYPES, Change, HostedZone, RecordSet, ResourceRecord
 from app.schemas.records import (
     AliasTarget,
     ChangeBatch,
@@ -56,7 +56,6 @@ class Draft:
     multivalue: bool | None = None
     cidr_routing: dict[str, Any] | None = None
     geoproximity: dict[str, Any] | None = None
-    health_check_id: str | None = None
     alias_target: dict[str, Any] | None = None
     is_default: bool = False
 
@@ -86,7 +85,6 @@ class Draft:
             multivalue=row.multivalue,
             cidr_routing=row.cidr_routing,
             geoproximity=row.geoproximity,
-            health_check_id=row.health_check_id,
             alias_target=row.alias_target,
             is_default=row.is_default,
         )
@@ -112,7 +110,6 @@ def record_out(row: RecordSet) -> RecordSetOut:
         multivalue=row.multivalue,
         cidr_routing=CidrRouting(**row.cidr_routing) if row.cidr_routing else None,
         geoproximity=Geoproximity(**row.geoproximity) if row.geoproximity else None,
-        health_check_id=row.health_check_id,
         alias_target=AliasTarget(**row.alias_target) if row.alias_target else None,
         is_default=row.is_default,
         created_at=row.created_at,
@@ -212,7 +209,7 @@ def normalize_record_set(rs: RecordSetIn, zone_name: str, prefix: str) -> tuple[
         err(f"{rs.routing_policy} is not a valid routing policy.", "routing_policy")
         return None, errors
 
-    d = Draft(name=name, type=rtype, routing_policy=policy, health_check_id=(rs.health_check_id or "").strip() or None)
+    d = Draft(name=name, type=rtype, routing_policy=policy)
 
     if rtype == "CNAME" and name == zone_name:
         err(
@@ -317,7 +314,6 @@ def _apply_draft(row: RecordSet, d: Draft) -> None:
     row.multivalue = d.multivalue
     row.cidr_routing = d.cidr_routing
     row.geoproximity = d.geoproximity
-    row.health_check_id = d.health_check_id
     row.alias_target = d.alias_target
     row.is_default = d.is_default
     row.resource_records = [ResourceRecord(value=v, position=i) for i, v in enumerate(d.values)]
@@ -330,7 +326,6 @@ def apply_change_batch(db: Session, zone: HostedZone, batch: ChangeBatch) -> Cha
     touched: set[Key] = set()
     first_change_for_name: dict[str, int] = {}
     errors: list[FieldError] = []
-    health_check_ids: set[str] | None = None
 
     for i, ch in enumerate(batch.changes):
         prefix = f"changes[{i}]"
@@ -341,17 +336,6 @@ def apply_change_batch(db: Session, zone: HostedZone, batch: ChangeBatch) -> Cha
                 draft = _identity_only(ch, zone.name)
             if draft is None:
                 errors.extend(errs)
-                continue
-        if ch.action != "DELETE" and draft.health_check_id:
-            if health_check_ids is None:
-                health_check_ids = owned_health_check_ids(db, zone.owner_id)
-            if draft.health_check_id not in health_check_ids:
-                errors.append(
-                    FieldError(
-                        f"No health check exists with the specified ID {draft.health_check_id}.",
-                        f"{prefix}.health_check_id",
-                    )
-                )
                 continue
         key = draft.key
         current = state.get(key)
@@ -430,10 +414,6 @@ def apply_change_batch(db: Session, zone: HostedZone, batch: ChangeBatch) -> Cha
             "The hosted zone was changed by another request at the same time. Refresh and try again.",
         ) from None
     return change
-
-
-def owned_health_check_ids(db: Session, owner_id: int) -> set[str]:
-    return set(db.scalars(select(HealthCheck.id).where(HealthCheck.owner_id == owner_id)))
 
 
 def _identity_only(ch: ChangeIn, zone_name: str) -> Draft | None:

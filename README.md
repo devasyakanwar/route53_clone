@@ -1,6 +1,6 @@
 # Route 53 Clone
 
-A full-stack clone of the **Amazon Route 53 console** for managing hosted zones, DNS records and health checks. The UI is
+A full-stack clone of the **Amazon Route 53 console** for managing hosted zones and DNS records. The UI is
 built with [Cloudscape](https://cloudscape.design/), AWS's own open-source design system and the one the real
 console uses, so tables, filters, forms, modals, the split panel and dark mode match the real console. The backend
 follows the semantics of the Route 53 API, including atomic `ChangeResourceRecordSets` batches.
@@ -13,7 +13,6 @@ Everything runs locally and costs $0: open-source dependencies only, no AWS acco
 | ![Zone detail with split panel (light)](docs/screenshots/zone-detail-light.png) | ![Zone detail with split panel (dark)](docs/screenshots/zone-detail-dark.png) |
 | ![Quick create record (light)](docs/screenshots/quick-create-light.png) | ![Quick create record (dark)](docs/screenshots/quick-create-dark.png) |
 | ![Dashboard (light)](docs/screenshots/dashboard-light.png) | ![Dashboard (dark)](docs/screenshots/dashboard-dark.png) |
-| ![Health checks (light)](docs/screenshots/health-checks-light.png) | ![Health checks (dark)](docs/screenshots/health-checks-dark.png) |
 
 ## Demo
 
@@ -62,13 +61,13 @@ Open <http://localhost:3000>. On Windows, `./dev.ps1` from the repo root starts 
 ### Tests
 
 ```bash
-cd backend && pytest --cov=app/services        # 106 tests, ~93% coverage of services; uses a temp SQLite DB
+cd backend && pytest --cov=app/services        # 89 tests, ~93% coverage of services; uses a temp SQLite DB
 cd e2e && npm install && npx playwright install chromium && npx playwright test   # needs both servers running
 ```
 
 The Playwright suite (10 tests) runs the whole walkthrough: sign in → create a zone → create one record of each of
 the 9 required types in one batch → edit one → bulk-delete them → delete the zone → sign out → sign in. It also covers
-the dashboard, the health check lifecycle (create → Unknown → Healthy → edit → delete), bulk zone delete and export,
+the dashboard, bulk zone delete and export, the "waking up the server" retry behaviour, the Coming soon pages,
 navigation, filters and keyboard shortcuts.
 `npm run screenshots` in `e2e/` regenerates the README images.
 
@@ -116,9 +115,6 @@ erDiagram
   hosted_zones ||--o{ zone_tags : tagged
   hosted_zones ||--o{ zone_vpcs : "associated (private)"
   hosted_zones ||--o{ changes : "audit trail"
-  users ||--o{ health_checks : owns
-  health_checks ||--o{ health_check_tags : tagged
-  health_checks |o--o{ record_sets : "health_check_id (failover)"
 ```
 
 | Table | Purpose / key columns |
@@ -128,11 +124,9 @@ erDiagram
 | `hosted_zones` | `id` (`Z` + 20 chars), `owner_id`, `name` (lower-case, trailing dot), `comment`, `is_private`, `caller_reference` (unique per owner), `record_count` (denormalised, includes NS/SOA), `name_servers` (JSON) |
 | `zone_vpcs` | `zone_id`, `vpc_id`, `vpc_region` (unique together) |
 | `zone_tags` | PK (`zone_id`, `key`), `value` |
-| `record_sets` | `zone_id`, `name`, `type` (CHECK over the 13 types), `ttl` (NULL for alias), `set_identifier`, `routing_policy`, `weight`, `region`, `failover`, `geo_location`, `multivalue`, `cidr_routing`, `geoproximity`, `health_check_id`, `alias_target` (JSON), `is_default` |
+| `record_sets` | `zone_id`, `name`, `type` (CHECK over the 13 types), `ttl` (NULL for alias), `set_identifier`, `routing_policy`, `weight`, `region`, `failover`, `geo_location`, `multivalue`, `cidr_routing`, `geoproximity`, `alias_target` (JSON), `is_default` |
 | `resource_records` | `record_set_id`, `value`, `position` (one row per value line, keeps the user's order) |
 | `changes` | `id` (`C` + 20 chars), `zone_id`, `comment`, `submitted_at`, `payload` (JSON of the batch) |
-| `health_checks` | `id` (UUID), `owner_id`, `caller_reference` (unique per owner), `name`, `type` (CHECK: HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP, CALCULATED, CLOUDWATCH_METRIC), `ip_address`, `fqdn`, `port`, `resource_path`, `search_string`, `request_interval`, `failure_threshold`, `measure_latency`, `enable_sni`, `regions` (JSON), `child_health_checks` (JSON), `health_threshold`, `cloudwatch_alarm` (JSON), `inverted`, `disabled`, `notification` (JSON: SNS topic + emails), `version` |
-| `health_check_tags` | PK (`health_check_id`, `key`), `value` |
 
 Record identity is enforced by a unique expression index on
 `(zone_id, name, type, COALESCE(set_identifier, ''))`, because SQLite treats NULLs as distinct in plain
@@ -170,14 +164,7 @@ Route 53 errors:
 | GET | `/changes/{id}` | `{id, status: PENDING\|INSYNC, submitted_at}`; INSYNC about 2 s after submission |
 | POST | `/hostedzones/{id}/import?dry_run=` | `{zone_file}`: BIND import (preview with `dry_run=true`); skips SOA and apex NS |
 | GET | `/hostedzones/{id}/export?format=json\|bind` | ListResourceRecordSets-shaped JSON, or a BIND zone file |
-| GET | `/dashboard` | Counts for the dashboard: hosted zones (public/private), record sets, health checks by status |
-| GET | `/healthchecks` | List health checks with simulated `status`, `description` (URL) and `alarms` |
-| POST | `/healthchecks` | CreateHealthCheck: endpoint (HTTP/HTTPS/TCP, optional string matching), calculated, or CloudWatch alarm; optional SNS notification and tags |
-| GET / PUT / DELETE | `/healthchecks/{id}` | Get; update (type, protocol, request interval and latency graphs are immutable); delete (400 `HealthCheckInUse` if a record or calculated check uses it) |
-| POST | `/healthchecks/batch-delete` | `{ids}`: bulk delete, atomic |
-| PUT | `/healthchecks/{id}/tags` | Replace tags |
-| GET | `/healthchecks/{id}/status` | GetHealthCheckStatus: per-Region health checker observations |
-| GET | `/healthchecks/{id}/metrics` | Last hour of percentage-healthy and latency data for the Monitoring and Latency charts |
+| GET | `/dashboard` | Counts for the dashboard: hosted zones (public/private) and record sets; sections that are "Coming soon" report zero |
 | GET | `/api/health` | Liveness |
 
 Full schema: <http://localhost:8000/docs>.
@@ -197,21 +184,20 @@ Full schema: <http://localhost:8000/docs>.
 - [x] Records table with property filter plus Type / Routing policy / Alias dropdowns, multi-select, and a split panel with record details
 - [x] Multi-row Quick create (one atomic batch, errors mapped back to the row and field), alias targets, TTL presets, all 8 routing policies (stored, not evaluated)
 - [x] Edit record (UPSERT; changing the Record ID becomes DELETE + CREATE in one batch), bulk delete, NS/SOA protection, record count kept in sync
-- [x] **Dashboard** modelled on the console's: DNS management, Traffic management, Availability monitoring and Domain registration summaries, Register domain search (mocked), recently created hosted zones, notifications
-- [x] **Health checks** (persisted in SQLite): list with status, description, alarms and ID; property filter; split panel with Monitoring (status chart), Alarms, Tags, Health checkers and Latency (chart) tabs; 2-step create wizard (Configure health check → Get notified when health check fails) for endpoint, calculated and CloudWatch alarm checks; edit; delete with typed confirmation and in-use protection. Records can reference a health check for failover routing
-- [x] "Coming soon" pages for every other section (Profiles, Traffic flow, Domains, Resolver, DNS Firewall, CIDR collections)
+- [x] **Dashboard** modelled on the console's: DNS management, Traffic management, Availability monitoring and Domain registration summaries (the sections that are "Coming soon" show 0), Register domain search (mocked), recently created hosted zones, notifications
+- [x] "Coming soon" pages for every other section (Health checks, Profiles, Traffic flow, Domains, Resolver, DNS Firewall, CIDR collections)
 
 ### Bonus
 
 - [x] BIND zone file import (paste or upload, preview, then import atomically)
 - [x] Export as JSON or BIND: one zone (Records tab), or all/selected hosted zones (Hosted zones page)
-- [x] Bulk operations: multi-select bulk delete for hosted zones, records and health checks (each one atomic), multi-row record creation
+- [x] Bulk operations: multi-select bulk delete for hosted zones and records (each one atomic), multi-row record creation
 - [x] Dark mode (account menu or gear icon → Visual mode: Light / Dark / Browser default), applied before first paint
 - [x] Keyboard shortcuts
 - [x] Record creation wizard (Choose routing policy → Configure records → Review and create)
 - [x] "Test record" modal that answers from the zone's records, wildcards included
 - [x] Mocked change propagation: a PENDING flash that turns into INSYNC
-- [x] pytest suite (106 tests) and a Playwright end-to-end suite (10 tests)
+- [x] pytest suite (89 tests) and a Playwright end-to-end suite (10 tests)
 
 ### Keyboard shortcuts
 
@@ -232,13 +218,10 @@ Shortcuts are ignored while you're typing in a field.
 
 - No real DNS: nothing is served or resolved, and "Test record" answers from the database.
 - Routing policies and alias targets are stored and validated but not evaluated.
-- Health checks don't probe anything. Status is simulated: a new check is Unknown for a few seconds, then Healthy;
-  endpoints in 203.0.113.0/24 or with a host name that starts with `down.` or contains `unhealthy` are Unhealthy;
-  calculated checks follow their children; disabled checks are Healthy; "invert" flips the result.
-- VPCs, health checks, CIDR collections and AWS accounts are mocked; there is one demo user.
+- VPCs, CIDR collections and AWS accounts are mocked; there is one demo user.
 - Change status is simulated: PENDING becomes INSYNC about 2 seconds after submission.
 - Hosted zone and record listing is filtered client-side, which suits up to a few thousand records. The API also supports server-side paging.
-- Hosted zones, records, health checks and the dashboard are implemented; other sections show "Coming soon".
+- Hosted zones, records and the dashboard are implemented; other sections, including Health checks, show "Coming soon".
 
 ## Deploy
 

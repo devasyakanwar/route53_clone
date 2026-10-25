@@ -13,7 +13,6 @@ export interface RecordItem extends RecordSet {
   valueText: string;
   ttlText: string;
   evaluateTargetHealthText: string;
-  healthCheckText: string;
   recordIdText: string;
 }
 
@@ -27,7 +26,6 @@ export function toRecordItem(r: RecordSet): RecordItem {
     valueText: recordValueLines(r).join('\n'),
     ttlText: dash(r.ttl),
     evaluateTargetHealthText: r.alias_target ? (r.alias_target.evaluate_target_health ? 'Yes' : 'No') : '-',
-    healthCheckText: dash(r.health_check_id),
     recordIdText: dash(r.set_identifier),
   };
 }
@@ -48,7 +46,6 @@ export function recordToInput(r: RecordSet): RecordSetInput {
     multivalue: r.multivalue,
     cidr_routing: r.cidr_routing,
     geoproximity: r.geoproximity,
-    health_check_id: r.health_check_id,
     alias_target: r.alias_target,
   };
 }

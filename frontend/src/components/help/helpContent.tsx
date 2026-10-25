@@ -45,11 +45,6 @@ export type HelpKey =
   | 'nameServers'
   | 'zoneType'
   | 'dashboard'
-  | 'healthChecks'
-  | 'createHealthCheck'
-  | 'whatToMonitor'
-  | 'healthCheckAdvanced'
-  | 'healthCheckNotification'
   | 'comingSoon';
 
 export const HELP: Record<HelpKey, ReactNode> = {
@@ -253,88 +248,11 @@ export const HELP: Record<HelpKey, ReactNode> = {
     <>
       <p>
         The dashboard summarizes the Route 53 resources in your account: hosted zones for DNS management, traffic
-        policies, health checks for availability monitoring, and registered domains.
+        policies, availability monitoring, and registered domains.
       </p>
       <p>Choose a resource count to go to that resource, or use the buttons to create new resources.</p>
     </>,
     [['What is Amazon Route 53?', `${DOCS}/Welcome.html`]],
-  ),
-  healthChecks: panel(
-    'Health checks',
-    <>
-      <p>Route 53 health checks monitor the health and performance of your resources. A health check can monitor:</p>
-      <ul>
-        <li>
-          <b>An endpoint</b>, such as a web server, specified by IP address or domain name
-        </li>
-        <li>
-          <b>The status of other health checks</b> (a calculated health check)
-        </li>
-        <li>
-          <b>The state of a CloudWatch alarm</b>
-        </li>
-      </ul>
-      <p>
-        You can associate a health check with records to use DNS failover, and configure an alarm to be notified
-        when the health check status changes. In this clone, statuses are simulated: endpoints in 203.0.113.0/24 or
-        with a host name that starts with &quot;down.&quot; are reported as unhealthy.
-      </p>
-    </>,
-    [['Creating Route 53 health checks', `${DOCS}/health-checks-creating.html`]],
-  ),
-  createHealthCheck: panel(
-    'Configure health check',
-    <>
-      <p>
-        Specify a name and what you want the health check to monitor. Health checkers in several AWS Regions send
-        requests to the endpoint; the endpoint is considered healthy if more than 18% of health checkers report it
-        healthy.
-      </p>
-    </>,
-    [['Values that you specify when you create a health check', `${DOCS}/health-checks-creating-values.html`]],
-  ),
-  whatToMonitor: panel(
-    'What to monitor',
-    <ul>
-      <li>
-        <b>Endpoint</b> – Route 53 sends HTTP, HTTPS or TCP requests to an IP address or domain name.
-      </li>
-      <li>
-        <b>Status of other health checks (calculated health check)</b> – healthy when a minimum number of the
-        selected health checks are healthy.
-      </li>
-      <li>
-        <b>State of CloudWatch alarm</b> – based on the data stream of a CloudWatch alarm.
-      </li>
-    </ul>,
-  ),
-  healthCheckAdvanced: panel(
-    'Advanced configuration',
-    <>
-      <p>
-        <b>Request interval</b>: the number of seconds between health checks (30 for standard, 10 for fast). You
-        can&apos;t change it after you create the health check.
-      </p>
-      <p>
-        <b>Failure threshold</b>: the number of consecutive checks that an endpoint must pass or fail to change its
-        status.
-      </p>
-      <p>
-        <b>String matching</b>: Route 53 searches the first 5,120 bytes of the response body for the string.
-      </p>
-      <p>
-        <b>Invert health check status</b> reports healthy endpoints as unhealthy and vice versa.{' '}
-        <b>Disable health check</b> stops checks; Route 53 considers a disabled health check to be healthy.
-      </p>
-    </>,
-  ),
-  healthCheckNotification: panel(
-    'Get notified when health check fails',
-    <p>
-      Route 53 can create a CloudWatch alarm that sends a notification through Amazon SNS when the health check
-      status is unhealthy. In this clone, the alarm and topic are stored but no email is sent.
-    </p>,
-    [['Monitoring health check status and getting notifications', `${DOCS}/health-checks-monitor-view-status.html`]],
   ),
   comingSoon: panel(
     'Route 53',

@@ -134,7 +134,6 @@ export interface RecordSetInput {
   multivalue?: boolean | null;
   cidr_routing?: CidrRouting | null;
   geoproximity?: Geoproximity | null;
-  health_check_id?: string | null;
   alias_target?: AliasTarget | null;
 }
 
@@ -168,92 +167,11 @@ export interface ApiFieldError {
 export interface ApiErrorBody {
   error: { code: string; message: string; field: string | null; errors?: ApiFieldError[] };
 }
-
-// ------------------------------------------------------------------ health checks
-
-export type HealthCheckType =
-  | 'HTTP'
-  | 'HTTPS'
-  | 'HTTP_STR_MATCH'
-  | 'HTTPS_STR_MATCH'
-  | 'TCP'
-  | 'CALCULATED'
-  | 'CLOUDWATCH_METRIC';
-
-export type HealthStatus = 'Healthy' | 'Unhealthy' | 'Unknown';
-
-export interface CloudWatchAlarmConfig {
-  alarm_name: string;
-  region: string;
-  insufficient_data_status: 'Healthy' | 'Unhealthy' | 'LastKnownStatus';
-}
-
-export interface HealthCheckNotification {
-  sns_topic: string;
-  emails: string[];
-}
-
-export interface HealthCheckConfig {
-  name: string;
-  type: HealthCheckType;
-  ip_address?: string | null;
-  fqdn?: string | null;
-  port?: number | null;
-  resource_path?: string | null;
-  search_string?: string | null;
-  request_interval: 10 | 30;
-  failure_threshold: number;
-  measure_latency: boolean;
-  enable_sni?: boolean | null;
-  regions: string[];
-  child_health_checks: string[];
-  health_threshold?: number | null;
-  cloudwatch_alarm?: CloudWatchAlarmConfig | null;
-  inverted: boolean;
-  disabled: boolean;
-  notification?: HealthCheckNotification | null;
-}
-
-export interface HealthCheck extends HealthCheckConfig {
-  id: string;
-  caller_reference: string;
-  status: HealthStatus;
-  description: string;
-  alarms: string;
-  tags: Tag[];
-  version: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CheckerObservation {
-  region: string;
-  region_name: string;
-  ip_address: string;
-  status: string;
-  checked_at: string;
-}
-
-export interface HealthCheckStatusResponse {
-  id: string;
-  status: HealthStatus;
-  observations: CheckerObservation[];
-}
-
-export interface HealthCheckMetrics {
-  id: string;
-  points: { timestamp: string; healthy_percentage: number; latency_ms: number | null }[];
-}
-
 export interface DashboardSummary {
   hosted_zones: number;
   public_hosted_zones: number;
   private_hosted_zones: number;
   record_sets: number;
-  health_checks: number;
-  healthy_health_checks: number;
-  unhealthy_health_checks: number;
-  unknown_health_checks: number;
   traffic_policies: number;
   policy_records: number;
   registered_domains: number;

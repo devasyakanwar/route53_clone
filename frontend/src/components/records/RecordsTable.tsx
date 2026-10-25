@@ -39,7 +39,6 @@ const COLUMNS: { id: string; label: string; alwaysVisible?: boolean; visible?: b
   { id: 'alias', label: 'Alias' },
   { id: 'value', label: 'Value/Route traffic to' },
   { id: 'ttl', label: 'TTL (seconds)' },
-  { id: 'healthCheck', label: 'Health check ID' },
   { id: 'evaluateTargetHealth', label: 'Evaluate target health' },
   { id: 'recordId', label: 'Record ID' },
 ];
@@ -219,7 +218,6 @@ export function RecordsTable({
       sortingComparator: (a, b) => (a.ttl ?? -1) - (b.ttl ?? -1),
       cell: r => r.ttlText,
     },
-    { id: 'healthCheck', width: 170, header: 'Health check ID', sortingField: 'healthCheckText', cell: r => r.healthCheckText },
     {
       id: 'evaluateTargetHealth',
       width: 200,

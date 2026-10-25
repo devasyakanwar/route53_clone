@@ -69,7 +69,6 @@ export function RecordSplitPanel({ zoneId, records }: { zoneId: string; records:
             ? [
                 { label: 'Record ID', value: r.recordIdText },
                 { label: 'Differentiator', value: r.differentiatorText },
-                { label: 'Health check ID', value: r.healthCheckText },
               ]
             : []),
           { label: 'Last updated', value: formatDate(r.updated_at) },

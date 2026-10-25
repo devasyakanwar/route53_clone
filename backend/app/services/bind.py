@@ -119,8 +119,6 @@ def export_json(rows: list[RecordSet]) -> dict[str, Any]:
                 "CollectionId": row.cidr_routing.get("collection_id"),
                 "LocationName": row.cidr_routing.get("location_name"),
             }
-        if row.health_check_id:
-            item["HealthCheckId"] = row.health_check_id
         if row.alias_target:
             item["AliasTarget"] = {
                 "HostedZoneId": row.alias_target.get("hosted_zone_id", ""),

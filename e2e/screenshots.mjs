@@ -38,12 +38,6 @@ for (const mode of ['light', 'dark']) {
   await page.waitForTimeout(800);
   await page.screenshot({ path: OUT + `dashboard-${mode}.png` });
 
-  await page.goto(`${BASE}/route53/v2/healthchecks`);
-  const hcTable = page.getByRole('table', { name: 'Health checks' });
-  await hcTable.getByText('api-blue', { exact: true }).waitFor();
-  await hcTable.getByRole('row').filter({ has: page.getByText('api-blue', { exact: true }) }).getByRole('cell').nth(3).click();
-  await page.waitForTimeout(1500);
-  await page.screenshot({ path: OUT + `health-checks-${mode}.png` });
   await context.close();
 }
 await browser.close();

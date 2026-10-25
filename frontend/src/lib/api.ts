@@ -3,8 +3,6 @@ import type {
   ApiFieldError,
   Change,
   ChangeInfo,
-  HealthCheck,
-  HealthCheckConfig,
   HostedZoneDetail,
   ImportResponse,
   Tag,
@@ -158,8 +156,6 @@ export const keys = {
   zones: '/hostedzones?page_size=1000',
   zone: (id: string) => `/hostedzones/${id}`,
   records: (id: string) => `/hostedzones/${id}/recordsets?page_size=1000`,
-  healthChecks: '/healthchecks',
-  healthCheck: (id: string) => `/healthchecks/${id}`,
 };
 
 export const api = {
@@ -179,12 +175,6 @@ export const api = {
       'GET',
       `/hostedzones/export?format=${format}${(ids ?? []).map(id => `&ids=${encodeURIComponent(id)}`).join('')}`,
     ),
-
-  createHealthCheck: (body: HealthCheckConfig & { tags?: Tag[] }) => request<HealthCheck>('POST', '/healthchecks', body),
-  updateHealthCheck: (id: string, body: HealthCheckConfig) => request<HealthCheck>('PUT', keys.healthCheck(id), body),
-  replaceHealthCheckTags: (id: string, tags: Tag[]) =>
-    request<HealthCheck>('PUT', `${keys.healthCheck(id)}/tags`, { tags }),
-  deleteHealthChecks: (ids: string[]) => request<void>('POST', '/healthchecks/batch-delete', { ids }),
 
   changeRecords: (zoneId: string, changes: Change[], comment?: string) =>
     request<{ change_info: ChangeInfo }>('POST', `/hostedzones/${zoneId}/rrset`, { comment, changes }),

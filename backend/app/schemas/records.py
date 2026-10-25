@@ -52,7 +52,6 @@ class RecordSetIn(BaseModel):
     multivalue: bool | None = None
     cidr_routing: CidrRouting | None = None
     geoproximity: Geoproximity | None = None
-    health_check_id: str | None = None
     alias_target: AliasTarget | None = None
 
 
@@ -82,7 +81,6 @@ class RecordSetOut(BaseModel):
     multivalue: bool | None
     cidr_routing: CidrRouting | None
     geoproximity: Geoproximity | None
-    health_check_id: str | None
     alias_target: AliasTarget | None
     is_default: bool
     created_at: datetime

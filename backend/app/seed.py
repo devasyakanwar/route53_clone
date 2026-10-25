@@ -1,19 +1,16 @@
 """Demo data: `python -m app.seed` loads it, `python -m app.seed --reset` wipes and reloads it."""
 
 import argparse
-from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import Base, SessionLocal, engine, init_db
-from app.models import HealthCheck, User, utcnow
-from app.schemas.health_checks import HealthCheckCreate, Notification
+from app.models import User
 from app.schemas.records import ChangeBatch, ChangeIn, RecordSetIn
 from app.schemas.zones import Tag, Vpc, ZoneCreate
 from app.services.auth import hash_password
-from app.services.health_checks import create_health_check
 from app.services.records import apply_change_batch
 from app.services.zones import create_zone
 
@@ -37,9 +34,9 @@ ZONES: list[dict[str, Any]] = [
             {"name": "ipv6.example.com", "type": "AAAA", "ttl": 300, "values": ["2001:db8:85a3::8a2e:370:7334"]},
             {"name": "_xmpp-server._tcp.example.com", "type": "SRV", "ttl": 300, "values": ["1 10 5269 xmpp-server.example.com"]},
             {"name": "api.example.com", "type": "A", "ttl": 60, "values": ["198.51.100.20"],
-             "routing_policy": "WEIGHTED", "set_identifier": "api-blue", "weight": 80, "health_check": "api-blue"},
+             "routing_policy": "WEIGHTED", "set_identifier": "api-blue", "weight": 80},
             {"name": "api.example.com", "type": "A", "ttl": 60, "values": ["198.51.100.21"],
-             "routing_policy": "WEIGHTED", "set_identifier": "api-green", "weight": 20, "health_check": "api-green"},
+             "routing_policy": "WEIGHTED", "set_identifier": "api-green", "weight": 20},
             {"name": "cdn.example.com", "type": "A",
              "alias_target": {"dns_name": "d111111abcdef8.cloudfront.net", "hosted_zone_id": "Z2FDTNDATAQYW2",
                               "evaluate_target_health": False, "endpoint_type": "cloudfront"}},
@@ -92,58 +89,13 @@ def seed(db: Session) -> None:
         )
         db.add(user)
         db.commit()
-    checks = seed_health_checks(db, user)
     for spec in ZONES:
         zone, _ = create_zone(db, user, spec["zone"])
-        records = [
-            {**r, "health_check_id": checks[r["health_check"]]} if "health_check" in r else r for r in spec["records"]
-        ]
         batch = ChangeBatch(
             comment="Seed data",
-            changes=[
-                ChangeIn(action="CREATE", record_set=RecordSetIn(**{k: v for k, v in r.items() if k != "health_check"}))
-                for r in records
-            ],
+            changes=[ChangeIn(action="CREATE", record_set=RecordSetIn(**r)) for r in spec["records"]],
         )
         apply_change_batch(db, zone, batch)
-
-
-def seed_health_checks(db: Session, user: User) -> dict[str, str]:
-    """Creates demo health checks, backdated two days so they have status history. Returns name -> ID."""
-    specs = [
-        HealthCheckCreate(
-            name="api-blue", type="HTTPS", fqdn="api-blue.example.com", port=443, resource_path="/health",
-            measure_latency=True, caller_reference="seed-hc-api-blue",
-            notification=Notification(sns_topic="route53-alerts", emails=["ops@example.com"]),
-            tags=[Tag(key="Environment", value="production")],
-        ),
-        HealthCheckCreate(
-            name="api-green", type="HTTP_STR_MATCH", ip_address="198.51.100.21", port=80, resource_path="/status",
-            search_string="OK", caller_reference="seed-hc-api-green",
-        ),
-        HealthCheckCreate(
-            name="legacy-backend", type="TCP", ip_address="203.0.113.50", port=8080,
-            request_interval=10, failure_threshold=2, caller_reference="seed-hc-legacy",
-            notification=Notification(sns_topic="route53-alerts", emails=["ops@example.com"]),
-        ),
-    ]
-    ids: dict[str, str] = {}
-    for spec in specs:
-        ids[spec.name] = create_health_check(db, user, spec).id
-    calculated = create_health_check(
-        db,
-        user,
-        HealthCheckCreate(
-            name="api-overall", type="CALCULATED", child_health_checks=[ids["api-blue"], ids["api-green"]],
-            health_threshold=1, caller_reference="seed-hc-api-overall",
-        ),
-    )
-    ids[calculated.name] = calculated.id
-    backdated = utcnow() - timedelta(days=2)
-    for hc in db.scalars(select(HealthCheck).where(HealthCheck.owner_id == user.id)):
-        hc.created_at = hc.updated_at = backdated
-    db.commit()
-    return ids
 
 
 def seed_if_empty(db: Session) -> None:
@@ -161,7 +113,7 @@ def main() -> None:
     with SessionLocal() as db:
         if args.reset or db.scalar(select(User.id).limit(1)) is None:
             seed(db)
-            print("Seeded demo user demo@example.com / demo, 3 hosted zones and 4 health checks.")
+            print("Seeded demo user demo@example.com / demo and 3 hosted zones.")
         else:
             print("Database already has data; use --reset to wipe and reseed.")
 

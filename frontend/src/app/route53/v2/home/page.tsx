@@ -12,14 +12,13 @@ import Input from '@cloudscape-design/components/input';
 import Link from '@cloudscape-design/components/link';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
-import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import Table from '@cloudscape-design/components/table';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { InfoLink } from '@/components/common/InfoLink';
 import { ConsolePage } from '@/components/shell/ConsolePage';
 import { useShortcuts } from '@/components/shell/ShortcutsProvider';
-import { useDashboard } from '@/hooks/useHealthChecks';
+import { useDashboard } from '@/hooks/useDashboard';
 import { useZones } from '@/hooks/useZones';
 import { displayName } from '@/lib/format';
 import { validateZoneName } from '@/lib/validators';
@@ -184,21 +183,10 @@ export default function DashboardPage() {
               <Section
                 title="Availability monitoring"
                 description="Monitor the health of your resources and route traffic away from unhealthy ones."
-                count={data?.health_checks}
+                count={0}
                 countLabel="Health checks"
                 href="/route53/v2/healthchecks"
-                detail={
-                  data && data.health_checks > 0 && (
-                    <SpaceBetween size="xxs">
-                      <StatusIndicator type="success">{data.healthy_health_checks} healthy</StatusIndicator>
-                      <StatusIndicator type="error">{data.unhealthy_health_checks} unhealthy</StatusIndicator>
-                      {data.unknown_health_checks > 0 && (
-                        <StatusIndicator type="pending">{data.unknown_health_checks} unknown</StatusIndicator>
-                      )}
-                    </SpaceBetween>
-                  )
-                }
-                action={<Button onClick={() => router.push('/route53/v2/healthchecks/create')}>Create health check</Button>}
+                action={<Button onClick={() => router.push('/route53/v2/healthchecks')}>Create health check</Button>}
               />
               <Section
                 title="Domain registration"
